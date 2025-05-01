@@ -1,12 +1,6 @@
 ARG TARGET=x86_64-unknown-linux-musl
 
-FROM messense/rust-musl-cross:x86_64-musl AS chef
-
-RUN rustup update
-RUN cargo install cargo-chef
-WORKDIR /app
-
-FROM chef AS planner
+FROM ghcr.io/profiidev/images/rust-musl-builder:main AS planner
 
 COPY backend/Cargo.toml ./Cargo.lock ./
 
@@ -15,7 +9,7 @@ COPY backend/Cargo.toml ./Cargo.lock ./
 
 RUN cargo chef prepare --recipe-path recipe.json --bin backend
 
-FROM chef AS builder
+FROM ghcr.io/profiidev/images/rust-musl-builder:main AS builder
 
 ARG TARGET
 ENV TARGET=$TARGET
