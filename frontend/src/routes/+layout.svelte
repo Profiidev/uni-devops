@@ -1,7 +1,13 @@
 <script lang="ts">
-  import '../app.css';
+	import { PUBLIC_BACKEND_URL } from '$env/static/public';
+	import { onMount } from 'svelte';
+	import '../app.css';
 
-  let { children } = $props();
+	let { children } = $props();
+	// example request
+	onMount(() => {
+	fetch(`${PUBLIC_BACKEND_URL}/api`)
+	})
 </script>
 
 {@render children()}
