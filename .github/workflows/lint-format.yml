@@ -25,7 +25,7 @@ jobs:
 
       - name: Set frontend env
         run: |
-          printf "PUBLIC_IS_APP=false\nPUBLIC_BACKEND_URL=http://localhost" > frontend/.env
+          printf "PUBLIC_BACKEND_URL=http://localhost" > frontend/.env
 
       - name: Generate svelte data
         run: |
