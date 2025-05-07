@@ -6,6 +6,7 @@ use rocket::{Config, launch};
 use state::RocketStateExt;
 
 mod cors;
+mod db;
 mod dummy;
 mod error;
 mod state;
