@@ -11,7 +11,11 @@ log = "0.4.27"
 openssl = { version = "0.10.72", features = ["vendored"] }
 rocket = "0.5.1"
 rocket_cors = "0.6.0"
-rocket_okapi = { version = "0.9.0", features = ["swagger", "uuid", "rocket_ws"] }
+rocket_okapi = { version = "0.9.0", features = [
+  "swagger",
+  "uuid",
+  "rocket_ws",
+] }
 schemars = { version = "0.8.22", features = ["uuid1"] }
 thiserror = "2.0.12"
 uuid = { version = "1.16.0", features = ["v4"] }
