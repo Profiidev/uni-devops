@@ -6,6 +6,7 @@ use fern::Dispatch;
 use rocket::{Config, launch};
 use state::RocketStateExt;
 
+mod auth;
 mod cors;
 mod db;
 mod dummy;

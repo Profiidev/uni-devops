@@ -26,6 +26,10 @@ entity = { path = "entity" }
 migration = { path = "migration" }
 thiserror = "2.0.12"
 uuid = { version = "1.16.0", features = ["v4"] }
+chrono = "0.4.41"
+rsa = "0.9.8"
+serde = { version = "1.0.219", features = ["derive"] }
+jsonwebtoken = "9.3.1"
 
 [[bin]]
 name = "backend"
