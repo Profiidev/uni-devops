@@ -8,3 +8,5 @@ impl MigratorTrait for Migrator {
     vec![]
   }
 }
+mod m20250507_180655_create_key_table;
+mod m20250507_180700_create_invalid_jwt_table;
