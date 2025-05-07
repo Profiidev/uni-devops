@@ -4,10 +4,20 @@ use jsonwebtoken::{
   errors::{Error, ErrorKind},
 };
 use rocket::{
-  State, async_trait,
-  http::{Cookie, SameSite, Status},
+  Response, async_trait,
+  http::{Cookie, SameSite},
   request::{FromRequest, Outcome, Request},
+  response::Responder,
   tokio::sync::Mutex,
+};
+use rocket_okapi::{
+  r#gen::OpenApiGenerator,
+  okapi::{
+    Map,
+    openapi3::{ParameterValue, RefOr, Responses, SecurityScheme, SecuritySchemeData},
+  },
+  request::{OpenApiFromRequest, RequestHeaderInput},
+  response::OpenApiResponderInner,
 };
 use rsa::{
   RsaPrivateKey, RsaPublicKey,
@@ -15,14 +25,17 @@ use rsa::{
   pkcs8::LineEnding,
   rand_core::OsRng,
 };
+use schemars::schema::{InstanceType, SchemaObject, SingleOrVec};
 use sea_orm::DatabaseConnection;
-use sea_orm_rocket::Connection;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde_json::Value;
 use uuid::Uuid;
 
-use crate::db::{DB, DBTrait};
+use crate::db::DBTrait;
 
-static COOKIE_NAME: &str = "token";
+use super::utils::jwt_from_request;
+
+pub static COOKIE_NAME: &str = "token";
 
 #[derive(Serialize, Deserialize)]
 pub struct JwtClaims {
@@ -141,48 +154,81 @@ impl<'r> FromRequest<'r> for JwtClaims {
   }
 }
 
-pub async fn jwt_from_request<C: DeserializeOwned>(req: &Request<'_>) -> Outcome<C, ()> {
-  let mut token = match req.headers().get_one("Authorization") {
-    Some(token) => token,
-    None => match req.cookies().get(COOKIE_NAME) {
-      Some(token) => token.value(),
-      None => {
-        let Some(Ok(token)) = req.query_value::<&str>("token") else {
-          return Outcome::Error((Status::BadRequest, ()));
-        };
-
-        token
-      }
-    },
-  };
-
-  if let Some(stripped) = token.strip_prefix("Bearer ") {
-    token = stripped;
+impl<'a> OpenApiFromRequest<'a> for JwtClaims {
+  fn from_request_input(
+    _: &mut OpenApiGenerator,
+    _: String,
+    _: bool,
+  ) -> rocket_okapi::Result<RequestHeaderInput> {
+    Ok(RequestHeaderInput::Security(
+      "apiKey".into(),
+      SecurityScheme {
+        data: SecuritySchemeData::ApiKey {
+          name: "token".into(),
+          location: "cookie".into(),
+        },
+        description: Some("JWT token".to_string()),
+        extensions: Map::new(),
+      },
+      Map::new(),
+    ))
   }
+}
 
-  let Some(jwt) = req.guard::<&State<JwtState>>().await.succeeded() else {
-    return Outcome::Error((Status::InternalServerError, ()));
-  };
-  let Some(conn) = req.guard::<Connection<'_, DB>>().await.succeeded() else {
-    return Outcome::Error((Status::InternalServerError, ()));
-  };
-  let db = conn.into_inner();
+#[derive(Default)]
+pub struct TokenRes;
 
-  let Ok(valid) = db
-    .tables()
-    .invalid_jwt()
-    .is_token_valid(token.to_string())
-    .await
-  else {
-    return Outcome::Error((Status::InternalServerError, ()));
-  };
-  if !valid {
-    return Outcome::Error((Status::Unauthorized, ()));
+#[async_trait]
+impl<'r, 'o: 'r> Responder<'r, 'o> for TokenRes {
+  fn respond_to(self, _request: &'r rocket::Request<'_>) -> rocket::response::Result<'o> {
+    Ok(
+      Response::build()
+        .header(rocket::http::Header::new("Cache-Control", "no-store"))
+        .header(rocket::http::Header::new("Pragma", "no-cache"))
+        .finalize(),
+    )
   }
+}
 
-  let Ok(claims) = jwt.validate_token(token) else {
-    return Outcome::Error((Status::Unauthorized, ()));
-  };
+impl OpenApiResponderInner for TokenRes {
+  fn responses(_: &mut OpenApiGenerator) -> rocket_okapi::Result<Responses> {
+    let mut responses = Map::new();
+    responses.insert(
+      "200".to_string(),
+      RefOr::Object(rocket_okapi::okapi::openapi3::Response {
+        description: "Successfully authenticated. The JWT token is set in the cookie.".to_string(),
+        headers: Map::from([(
+          "Set-Cookie".to_string(),
+          RefOr::Object(rocket_okapi::okapi::openapi3::Header {
+            allow_empty_value: false,
+            required: true,
+            deprecated: false,
+            value: ParameterValue::Schema {
+              style: None,
+              explode: None,
+              allow_reserved: false,
+              schema: SchemaObject {
+                instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::String))),
+                format: Some("string".to_string()),
+                ..Default::default()
+              },
+              examples: None,
+              example: Some(Value::String(format!(
+                "{}={}; HttpOnly; Max-Age={}; SameSite=Lax; Secure",
+                COOKIE_NAME, "{token}", "{max_age}"
+              ))),
+            },
+            extensions: Map::new(),
+            description: Some("JWT token".to_string()),
+          }),
+        )]),
+        ..Default::default()
+      }),
+    );
 
-  Outcome::Success(claims)
+    Ok(Responses {
+      responses,
+      ..Default::default()
+    })
+  }
 }

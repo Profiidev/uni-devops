@@ -9,6 +9,7 @@ use state::PasswordState;
 mod jwt;
 mod password;
 mod state;
+mod utils;
 
 pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
   get_nested_endpoints_and_docs! {
