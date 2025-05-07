@@ -6,8 +6,8 @@ use state::RocketStateExt;
 
 mod cors;
 mod dummy;
-mod state;
 mod error;
+mod state;
 
 #[launch]
 async fn rocket() -> _ {
