@@ -8,6 +8,12 @@ use rocket_okapi::{
   settings::OpenApiSettings,
   swagger_ui::{SwaggerUIConfig, make_swagger_ui},
 };
+use sea_orm_rocket::Database;
+
+use crate::{
+  auth::{self, AsyncAuthStates},
+  db::DB,
+};
 
 pub trait RocketStateExt {
   fn mount_routes(self) -> Self;
@@ -31,14 +37,14 @@ impl RocketStateExt for Rocket<Build> {
       rocket, "/", openapi_settings,
       "/" => openapi_base_url(),
       "/" => crate::dummy::routes(&openapi_settings),
+      "/auth" => crate::auth::routes(&openapi_settings),
     };
 
     rocket
   }
 
   fn init_state(self) -> Self {
-    //manage all sync state
-    self
+    auth::state(self)
   }
 
   fn init_async_state(self) -> Self {
@@ -57,5 +63,10 @@ fn openapi_base_url() -> (Vec<Route>, OpenApi) {
 
 async fn manage_async_state(server: Rocket<Build>) -> fairing::Result {
   //manage all async state
+  let db = &DB::fetch(&server).unwrap().conn;
+
+  let states = AsyncAuthStates::new(db).await;
+  let server = states.add(server);
+
   Ok(server)
 }
