@@ -1,4 +1,7 @@
-use rocket::{fairing::{self, AdHoc}, Build, Rocket};
+use rocket::{
+  Build, Rocket,
+  fairing::{self, AdHoc},
+};
 
 pub trait RocketStateExt {
   fn manage_state(self) -> Self;
@@ -12,7 +15,7 @@ impl RocketStateExt for Rocket<Build> {
   }
 
   fn manage_async_state(self) -> Self {
-     self.attach(AdHoc::try_on_ignite("Async state init", manage_async_state))
+    self.attach(AdHoc::try_on_ignite("Async state init", manage_async_state))
   }
 }
 
