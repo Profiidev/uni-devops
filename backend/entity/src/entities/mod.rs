@@ -4,3 +4,4 @@ pub mod prelude;
 
 pub mod invalid_jwt;
 pub mod key;
+pub mod user;

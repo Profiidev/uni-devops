@@ -2,3 +2,4 @@
 
 pub use super::invalid_jwt::Entity as InvalidJwt;
 pub use super::key::Entity as Key;
+pub use super::user::Entity as User;
