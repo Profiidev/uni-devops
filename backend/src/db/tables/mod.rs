@@ -1,9 +1,11 @@
 use invalid_jwt::InvalidJwtTable;
 use key::KeyTable;
 use sea_orm::DatabaseConnection;
+use user::UserTable;
 
 mod invalid_jwt;
 mod key;
+mod user;
 
 pub struct Tables<'db> {
   #[allow(unused)]
@@ -21,5 +23,9 @@ impl<'db> Tables<'db> {
 
   pub fn key(self) -> KeyTable<'db> {
     KeyTable::new(self.db)
+  }
+
+  pub fn user(self) -> UserTable<'db> {
+    UserTable::new(self.db)
   }
 }

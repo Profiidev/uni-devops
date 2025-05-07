@@ -154,7 +154,7 @@ impl<'r> FromRequest<'r> for JwtClaims {
   }
 }
 
-impl<'a> OpenApiFromRequest<'a> for JwtClaims {
+impl OpenApiFromRequest<'_> for JwtClaims {
   fn from_request_input(
     _: &mut OpenApiGenerator,
     _: String,

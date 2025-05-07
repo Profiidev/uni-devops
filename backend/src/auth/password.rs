@@ -76,7 +76,7 @@ async fn authenticate(
 }
 
 #[derive(Deserialize, JsonSchema)]
-struct PasswordChange {
+struct PasswordChangeReq {
   password: String,
   password_confirm: String,
 }
@@ -89,7 +89,7 @@ struct PasswordChange {
 #[openapi(tag = "auth", ignore = "conn")]
 #[post("/change", data = "<req>")]
 async fn change(
-  req: Json<PasswordChange>,
+  req: Json<PasswordChangeReq>,
   auth: JwtClaims,
   state: &State<PasswordState>,
   conn: Connection<'_, DB>,
