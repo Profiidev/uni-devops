@@ -11,18 +11,20 @@ use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[allow(unused)]
 #[derive(Error, Debug)]
 pub enum Error {
+  #[allow(unused)]
   #[error("BadRequest")]
   BadRequest,
   #[error("Unauthorized")]
   Unauthorized,
   #[allow(clippy::enum_variant_names)]
+  #[allow(unused)]
   #[error("InternalServerError")]
   InternalServerError,
   #[error("Conflict")]
   Conflict,
+  #[allow(unused)]
   #[error("Gone")]
   Gone,
   #[error("Uuid Error {source:?}")]

@@ -8,7 +8,6 @@ mod key;
 mod user;
 
 pub struct Tables<'db> {
-  #[allow(unused)]
   db: &'db DatabaseConnection,
 }
 

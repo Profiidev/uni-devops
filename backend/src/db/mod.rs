@@ -24,7 +24,6 @@ impl DB {
 }
 
 pub trait DBTrait {
-  #[allow(unused)]
   fn tables(&self) -> Tables<'_>;
 }
 

@@ -28,6 +28,7 @@ pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
 
 #[derive(Serialize, JsonSchema)]
 struct KeyRes<'a> {
+  /// The public key used to encrypt the password when send to the server.
   key: &'a str,
 }
 
@@ -44,14 +45,16 @@ fn key(state: &State<PasswordState>) -> Json<KeyRes<'_>> {
 
 #[derive(Deserialize, JsonSchema)]
 struct LoginReq {
+  /// The email of the user
   email: String,
+  /// The password of the user. Encrypted with the public key
   password: String,
 }
 
 /// # Authenticate
 ///
 /// Authenticate the user with email and password and set the JWT cookie.
-/// The password is encrypted with the public key obtained from the `./key` endpoint.
+/// The password is encrypted with the public key obtained from the `/auth/password/key` endpoint.
 #[openapi(tag = "auth", ignore = "conn")]
 #[post("/authenticate", data = "<req>")]
 async fn authenticate(
@@ -77,7 +80,9 @@ async fn authenticate(
 
 #[derive(Deserialize, JsonSchema)]
 struct PasswordChangeReq {
+  /// The new password. Encrypted with the public key
   password: String,
+  /// The new password confirmation. Encrypted with the public key
   password_confirm: String,
 }
 
@@ -85,7 +90,7 @@ struct PasswordChangeReq {
 ///
 /// Change the password of the user. The password and password confirmation
 /// must be the same. The password is encrypted with the public key obtained
-/// from the `./key` endpoint.
+/// from the `/auth/password/key` endpoint.
 #[openapi(tag = "auth", ignore = "conn")]
 #[post("/change", data = "<req>")]
 async fn change(
