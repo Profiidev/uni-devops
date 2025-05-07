@@ -4,17 +4,22 @@ use rocket::{
 };
 
 pub trait RocketStateExt {
-  fn manage_state(self) -> Self;
-  fn manage_async_state(self) -> Self;
+  fn mount_routes(self) -> Self;
+  fn init_state(self) -> Self;
+  fn init_async_state(self) -> Self;
 }
 
 impl RocketStateExt for Rocket<Build> {
-  fn manage_state(self) -> Self {
+  fn mount_routes(self) -> Self {
+    self.mount("/", crate::dummy::routes())
+  }
+
+  fn init_state(self) -> Self {
     //manage all sync state
     self
   }
 
-  fn manage_async_state(self) -> Self {
+  fn init_async_state(self) -> Self {
     self.attach(AdHoc::try_on_ignite("Async state init", manage_async_state))
   }
 }

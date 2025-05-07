@@ -5,6 +5,7 @@ use rocket::{Config, launch};
 use state::RocketStateExt;
 
 mod cors;
+mod dummy;
 mod state;
 
 #[launch]
@@ -30,6 +31,7 @@ async fn rocket() -> _ {
 
   rocket::custom(figment)
     .attach(cors)
-    .manage_state()
-    .manage_async_state()
+    .mount_routes()
+    .init_state()
+    .init_async_state()
 }
