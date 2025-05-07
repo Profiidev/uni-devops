@@ -36,7 +36,6 @@ impl RocketStateExt for Rocket<Build> {
     mount_endpoints_and_merged_docs! {
       rocket, "/", openapi_settings,
       "/" => openapi_base_url(),
-      "/" => crate::dummy::routes(&openapi_settings),
       "/auth" => crate::auth::routes(&openapi_settings),
     };
 
