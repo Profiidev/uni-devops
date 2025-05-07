@@ -1,4 +1,5 @@
 use cors::cors;
+#[cfg(debug_assertions)]
 use dotenv::dotenv;
 use fern::Dispatch;
 use rocket::{Config, launch};
