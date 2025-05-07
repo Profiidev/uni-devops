@@ -2,8 +2,10 @@ use cors::cors;
 use dotenv::dotenv;
 use fern::Dispatch;
 use rocket::{Config, launch};
+use state::RocketStateExt;
 
 mod cors;
+mod state;
 
 #[launch]
 async fn rocket() -> _ {
@@ -26,5 +28,8 @@ async fn rocket() -> _ {
     .merge(("address", "0.0.0.0"))
     .merge(("log_level", "normal"));
 
-  rocket::custom(figment).attach(cors)
+  rocket::custom(figment)
+    .attach(cors)
+    .manage_state()
+    .manage_async_state()
 }
