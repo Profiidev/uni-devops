@@ -17,7 +17,7 @@ pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
 }
 
 /// # Logout
-/// 
+///
 /// This endpoint is used to log out a user by invalidating their JWT token and removing the token cookie.
 #[openapi(tag = "auth", ignore = "conn")]
 #[post("/logout")]
@@ -48,7 +48,7 @@ async fn logout(
 }
 
 /// # Test Token
-/// 
+///
 /// This endpoint is used to test if the JWT token is valid. It returns true if the token is valid, and false otherwise.
 #[openapi(tag = "auth")]
 #[get("/test_token")]
