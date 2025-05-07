@@ -1,8 +1,7 @@
-use invalid_jwt::InvalidJwtTable;
-use key::KeyTable;
 use sea_orm::DatabaseConnection;
 
 pub struct Tables<'db> {
+  #[allow(unused)]
   db: &'db DatabaseConnection,
 }
 

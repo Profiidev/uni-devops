@@ -24,6 +24,7 @@ impl DB {
 }
 
 pub trait DBTrait {
+  #[allow(unused)]
   fn tables(&self) -> Tables<'_>;
 }
 
@@ -45,6 +46,6 @@ pub trait RocketDBExt {
 
 impl RocketDBExt for Rocket<Build> {
   fn attach_db(self) -> Self {
-    self.attach(DB::attach(self))
+    DB::attach(self)
   }
 }
