@@ -196,7 +196,7 @@ impl OpenApiResponderInner for TokenRes {
     responses.insert(
       "200".to_string(),
       RefOr::Object(rocket_okapi::okapi::openapi3::Response {
-        description: "Successfully authenticated. The JWT token is set in the cookie.".to_string(),
+        description: "The JWT token is set in the cookie.".to_string(),
         headers: Map::from([(
           "Set-Cookie".to_string(),
           RefOr::Object(rocket_okapi::okapi::openapi3::Header {

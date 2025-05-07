@@ -7,13 +7,15 @@ use sea_orm::DatabaseConnection;
 use state::PasswordState;
 
 mod jwt;
+mod logout;
 mod password;
 mod state;
 mod utils;
 
 pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
   get_nested_endpoints_and_docs! {
-    "/password" => password::routes(settings)
+    "/password" => password::routes(settings),
+    "/" => logout::routes(settings),
   }
 }
 
