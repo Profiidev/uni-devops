@@ -1,5 +1,9 @@
 # Backend
 
+## Docs
+
+The docs can be viewed locally at `http://localhost:1420/backend/docs/index.html`
+
 ## Development requirements
 
 - [sea-orm-cli](https://crates.io/crates/sea-orm-cli) (only for database schema modifications)
