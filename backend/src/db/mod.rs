@@ -38,3 +38,13 @@ async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
   let _ = migration::Migrator::up(conn, None).await;
   Ok(rocket)
 }
+
+pub trait RocketDBExt {
+  fn attach_db(self) -> Self;
+}
+
+impl RocketDBExt for Rocket<Build> {
+  fn attach_db(self) -> Self {
+    self.attach(DB::attach(self))
+  }
+}
