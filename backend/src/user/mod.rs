@@ -1,5 +1,9 @@
+use std::io::Cursor;
+
 use argon2::password_hash::SaltString;
-use rocket::{post, serde::json::Json, Route, State};
+use base64::prelude::*;
+use image::{ImageFormat, imageops::FilterType};
+use rocket::{Route, State, delete, post, serde::json::Json};
 use rocket_okapi::{
   okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings,
 };
@@ -10,11 +14,13 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
-  auth::{state::PasswordState, utils::hash_password}, db::{DBTrait, DB}, error::Result
+  auth::{jwt::JwtClaims, state::PasswordState, utils::hash_password},
+  db::{DB, DBTrait},
+  error::Result,
 };
 
 pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
-  openapi_get_routes_spec![settings: register]
+  openapi_get_routes_spec![settings: register, delete, update, update_image]
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -32,7 +38,11 @@ struct UserRegisterReq {
 /// Registers a new user.
 #[openapi(tag = "user", ignore = "conn")]
 #[post("/register", data = "<req>")]
-async fn register(req: Json<UserRegisterReq>, conn: Connection<'_, DB>, pw: &State<PasswordState>,) -> Result<()> {
+async fn register(
+  req: Json<UserRegisterReq>,
+  conn: Connection<'_, DB>,
+  pw: &State<PasswordState>,
+) -> Result<()> {
   let db = conn.into_inner();
 
   let salt = SaltString::generate(OsRng {}).to_string();
@@ -47,6 +57,71 @@ async fn register(req: Json<UserRegisterReq>, conn: Connection<'_, DB>, pw: &Sta
     salt,
   };
   db.tables().user().create_user(user).await?;
+
+  Ok(())
+}
+
+/// # Delete User
+///
+/// Deletes the user from the provided token.
+#[openapi(tag = "user", ignore = "conn")]
+#[delete("/delete")]
+async fn delete(auth: JwtClaims, conn: Connection<'_, DB>) -> Result<()> {
+  let db = conn.into_inner();
+
+  db.tables().user().delete_user(auth.sub).await?;
+
+  Ok(())
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct UserUpdateReq {
+  /// The name of the user
+  name: String,
+}
+
+/// # Update Profile
+///
+/// Updates the profile of the user.
+#[openapi(tag = "user", ignore = "conn")]
+#[post("/update", data = "<req>")]
+async fn update(auth: JwtClaims, req: Json<UserUpdateReq>, conn: Connection<'_, DB>) -> Result<()> {
+  let db = conn.into_inner();
+
+  db.tables().user().update_user(auth.sub, req.0.name).await?;
+
+  Ok(())
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct UserImageUpdateReq {
+  /// The new image encoded in base64
+  image: String,
+}
+
+/// # Update Image
+///
+/// Updates the image of the user.
+#[openapi(tag = "user", ignore = "conn")]
+#[post("/update_image", data = "<req>")]
+async fn update_image(
+  auth: JwtClaims,
+  req: Json<UserImageUpdateReq>,
+  conn: Connection<'_, DB>,
+) -> Result<()> {
+  let db = conn.into_inner();
+
+  let bytes = BASE64_STANDARD.decode(req.0.image)?;
+  let image = image::load_from_memory(&bytes)?;
+
+  let scaled = image.resize_to_fill(256, 256, FilterType::Lanczos3);
+
+  let mut cursor = Cursor::new(Vec::new());
+  scaled.write_to(&mut cursor, ImageFormat::WebP)?;
+
+  let cropped = BASE64_STANDARD.encode(cursor.into_inner());
+
+  db.tables().user().update_image(auth.sub, cropped).await?;
 
   Ok(())
 }

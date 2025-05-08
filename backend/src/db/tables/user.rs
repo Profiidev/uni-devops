@@ -40,4 +40,32 @@ impl<'db> UserTable<'db> {
     let user: user::ActiveModel = user.into();
     user.insert(self.db).await
   }
+
+  pub async fn delete_user(&self, id: Uuid) -> Result<(), DbErr> {
+    let user = self.get_user(id).await?;
+
+    user.delete(self.db).await?;
+
+    Ok(())
+  }
+
+  pub async fn update_user(&self, id: Uuid, name: String) -> Result<(), DbErr> {
+    let mut user: user::ActiveModel = self.get_user(id).await?.into();
+
+    user.name = Set(name);
+
+    user.update(self.db).await?;
+
+    Ok(())
+  }
+
+  pub async fn update_image(&self, id: Uuid, image: String) -> Result<(), DbErr> {
+    let mut user: user::ActiveModel = self.get_user(id).await?.into();
+
+    user.image = Set(image);
+
+    user.update(self.db).await?;
+
+    Ok(())
+  }
 }

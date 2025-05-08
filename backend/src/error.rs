@@ -62,6 +62,11 @@ pub enum Error {
     #[from]
     source: jsonwebtoken::errors::Error,
   },
+  #[error("Image Error {source:?}")]
+  Image {
+    #[from]
+    source: image::error::ImageError,
+  },
 }
 
 impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
