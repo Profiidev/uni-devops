@@ -35,4 +35,9 @@ impl<'db> UserTable<'db> {
 
     Ok(())
   }
+
+  pub async fn create_user(&self, user: user::Model) -> Result<user::Model, DbErr> {
+    let user: user::ActiveModel = user.into();
+    user.insert(self.db).await
+  }
 }

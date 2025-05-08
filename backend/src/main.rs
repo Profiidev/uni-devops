@@ -11,6 +11,7 @@ mod cors;
 mod db;
 mod error;
 mod state;
+mod user;
 
 #[launch]
 async fn rocket() -> _ {
