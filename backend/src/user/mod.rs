@@ -3,14 +3,14 @@ use std::io::Cursor;
 use argon2::password_hash::SaltString;
 use base64::prelude::*;
 use image::{ImageFormat, imageops::FilterType};
-use rocket::{Route, State, delete, post, serde::json::Json};
+use rocket::{Route, State, delete, get, post, serde::json::Json};
 use rocket_okapi::{
   okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings,
 };
 use rsa::rand_core::OsRng;
 use schemars::JsonSchema;
 use sea_orm_rocket::Connection;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
@@ -20,7 +20,7 @@ use crate::{
 };
 
 pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
-  openapi_get_routes_spec![settings: register, delete, update, update_image]
+  openapi_get_routes_spec![settings: register, delete, update, update_image, info, info_by_id]
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -124,4 +124,52 @@ async fn update_image(
   db.tables().user().update_image(auth.sub, cropped).await?;
 
   Ok(())
+}
+
+#[derive(Serialize, JsonSchema)]
+struct UserInfoRes {
+  /// The id of the user
+  id: Uuid,
+  /// The name of the user
+  name: String,
+  /// The email of the user
+  email: String,
+  /// The image of the user encoded in base64
+  image: String,
+}
+
+/// # User Info
+///
+/// Returns the user info of the user.
+#[openapi(tag = "user", ignore = "conn")]
+#[get("/info")]
+async fn info(auth: JwtClaims, conn: Connection<'_, DB>) -> Result<Json<UserInfoRes>> {
+  let db = conn.into_inner();
+
+  let user = db.tables().user().get_user(auth.sub).await?;
+
+  Ok(Json(UserInfoRes {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    image: user.image,
+  }))
+}
+
+/// # User Info by ID
+///
+/// Returns the user info of the user by id.
+#[openapi(tag = "user", ignore = "conn")]
+#[get("/info/<id>")]
+async fn info_by_id(id: Uuid, conn: Connection<'_, DB>) -> Result<Json<UserInfoRes>> {
+  let db = conn.into_inner();
+
+  let user = db.tables().user().get_user(id).await?;
+
+  Ok(Json(UserInfoRes {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    image: user.image,
+  }))
 }
