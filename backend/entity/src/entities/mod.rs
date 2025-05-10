@@ -4,4 +4,6 @@ pub mod prelude;
 
 pub mod invalid_jwt;
 pub mod key;
+pub mod player;
+pub mod room;
 pub mod user;

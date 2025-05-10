@@ -1,10 +1,14 @@
 use invalid_jwt::InvalidJwtTable;
 use key::KeyTable;
+use player::PlayerTable;
+use room::RoomTable;
 use sea_orm::DatabaseConnection;
 use user::UserTable;
 
 mod invalid_jwt;
 mod key;
+mod player;
+mod room;
 mod user;
 
 pub struct Tables<'db> {
@@ -26,5 +30,13 @@ impl<'db> Tables<'db> {
 
   pub fn user(self) -> UserTable<'db> {
     UserTable::new(self.db)
+  }
+
+  pub fn player(self) -> PlayerTable<'db> {
+    PlayerTable::new(self.db)
+  }
+
+  pub fn room(self) -> RoomTable<'db> {
+    RoomTable::new(self.db)
   }
 }

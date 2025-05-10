@@ -10,6 +10,7 @@ mod auth;
 mod cors;
 mod db;
 mod error;
+mod game;
 mod state;
 mod user;
 

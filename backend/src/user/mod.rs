@@ -161,7 +161,11 @@ async fn info(auth: JwtClaims, conn: Connection<'_, DB>) -> Result<Json<UserInfo
 /// Returns the user info of the user by id.
 #[openapi(tag = "user", ignore = "conn")]
 #[get("/info/<id>")]
-async fn info_by_id(id: Uuid, conn: Connection<'_, DB>) -> Result<Json<UserInfoRes>> {
+async fn info_by_id(
+  _auth: JwtClaims,
+  id: Uuid,
+  conn: Connection<'_, DB>,
+) -> Result<Json<UserInfoRes>> {
   let db = conn.into_inner();
 
   let user = db.tables().user().get_user(id).await?;
