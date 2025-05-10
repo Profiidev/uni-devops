@@ -53,7 +53,7 @@ async fn create(
 ///
 /// Deletes a room with the given ID if the current user is the owner.
 #[openapi(tag = "game", ignore = "conn")]
-#[delete("/delete/<id>")]
+#[delete("/<id>")]
 async fn delete(id: Uuid, auth: JwtClaims, conn: Connection<'_, DB>) -> Result<()> {
   let db = conn.into_inner();
   db.tables().room().delete(id, auth.sub).await?;
