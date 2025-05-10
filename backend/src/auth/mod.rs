@@ -6,11 +6,11 @@ use rocket_okapi::{
 use sea_orm::DatabaseConnection;
 use state::PasswordState;
 
-mod jwt;
+pub mod jwt;
 mod logout;
 mod password;
-mod state;
-mod utils;
+pub mod state;
+pub mod utils;
 
 pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
   get_nested_endpoints_and_docs! {

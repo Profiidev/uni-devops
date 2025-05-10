@@ -37,6 +37,7 @@ impl RocketStateExt for Rocket<Build> {
       rocket, "/", openapi_settings,
       "/" => openapi_base_url(),
       "/auth" => crate::auth::routes(&openapi_settings),
+      "/user" => crate::user::routes(&openapi_settings),
     };
 
     rocket
