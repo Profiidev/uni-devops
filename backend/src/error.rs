@@ -11,18 +11,20 @@ use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[allow(unused)]
 #[derive(Error, Debug)]
 pub enum Error {
+  #[allow(unused)]
   #[error("BadRequest")]
   BadRequest,
   #[error("Unauthorized")]
   Unauthorized,
   #[allow(clippy::enum_variant_names)]
+  #[allow(unused)]
   #[error("InternalServerError")]
   InternalServerError,
   #[error("Conflict")]
   Conflict,
+  #[allow(unused)]
   #[error("Gone")]
   Gone,
   #[error("Uuid Error {source:?}")]
@@ -34,6 +36,31 @@ pub enum Error {
   IO {
     #[from]
     source: std::io::Error,
+  },
+  #[error("DB error {source:?}")]
+  DB {
+    #[from]
+    source: sea_orm::DbErr,
+  },
+  #[error("Argon2 Error {source:?}")]
+  Argon2 {
+    #[from]
+    source: argon2::password_hash::Error,
+  },
+  #[error("Base64 Error {source:?}")]
+  Base64 {
+    #[from]
+    source: base64::DecodeError,
+  },
+  #[error("Rsa error {source:?}")]
+  Rsa {
+    #[from]
+    source: rsa::errors::Error,
+  },
+  #[error("Jwt Error {source:?}")]
+  Jwt {
+    #[from]
+    source: jsonwebtoken::errors::Error,
   },
 }
 
