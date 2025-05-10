@@ -13,6 +13,7 @@ use sea_orm_rocket::Database;
 use crate::{
   auth::{self, AsyncAuthStates},
   db::DB,
+  game,
 };
 
 pub trait RocketStateExt {
@@ -38,13 +39,15 @@ impl RocketStateExt for Rocket<Build> {
       "/" => openapi_base_url(),
       "/auth" => crate::auth::routes(&openapi_settings),
       "/user" => crate::user::routes(&openapi_settings),
+      "/game" => crate::game::routes(&openapi_settings),
     };
 
     rocket
   }
 
   fn init_state(self) -> Self {
-    auth::state(self)
+    let server = auth::state(self);
+    game::state(server)
   }
 
   fn init_async_state(self) -> Self {
