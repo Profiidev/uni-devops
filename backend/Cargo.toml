@@ -17,6 +17,13 @@ rocket_okapi = { version = "0.9.0", features = [
   "rocket_ws",
 ] }
 schemars = { version = "0.8.22", features = ["uuid1"] }
+sea-orm-rocket = "0.5.5"
+sea-orm = { version = "1.1.10", features = [
+  "sqlx-postgres",
+  "runtime-tokio-rustls",
+] }
+entity = { path = "entity" }
+migration = { path = "migration" }
 thiserror = "2.0.12"
 uuid = { version = "1.16.0", features = ["v4"] }
 

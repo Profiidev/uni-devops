@@ -1,4 +1,5 @@
 use cors::cors;
+use db::RocketDBExt;
 #[cfg(debug_assertions)]
 use dotenv::dotenv;
 use fern::Dispatch;
@@ -6,6 +7,7 @@ use rocket::{Config, launch};
 use state::RocketStateExt;
 
 mod cors;
+mod db;
 mod dummy;
 mod error;
 mod state;
@@ -25,15 +27,32 @@ async fn rocket() -> _ {
     .apply()
     .expect("Failed to initialize logger");
 
+  let url = std::env::var("DB_URL").expect("Failed to load DB_URL");
+  let sqlx_logging = std::env::var("DB_LOGGING")
+    .map(|s| s.parse::<bool>().unwrap_or(false))
+    .unwrap_or(false);
+
   let cors = cors();
 
   let figment = Config::figment()
     .merge(("address", "0.0.0.0"))
-    .merge(("log_level", "normal"));
+    .merge(("log_level", "normal"))
+    .merge((
+      "databases.sea_orm",
+      sea_orm_rocket::Config {
+        url,
+        min_connections: None,
+        max_connections: 1024,
+        connect_timeout: 5,
+        idle_timeout: None,
+        sqlx_logging,
+      },
+    ));
 
   rocket::custom(figment)
     .attach(cors)
     .mount_routes()
     .init_state()
+    .attach_db()
     .init_async_state()
 }
