@@ -4,6 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+dotenv = "0.15.0"
+env_logger = "0.11.8"
+fern = "0.7.1"
+log = "0.4.27"
+openssl = { version = "0.10.72", features = ["vendored"] }
+rocket = "0.5.1"
+rocket_cors = "0.6.0"
+thiserror = "2.0.12"
+uuid = { version = "1.16.0", features = ["v4"] }
 
 [[bin]]
 name = "backend"
