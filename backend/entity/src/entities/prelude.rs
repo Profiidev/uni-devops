@@ -2,4 +2,6 @@
 
 pub use super::invalid_jwt::Entity as InvalidJwt;
 pub use super::key::Entity as Key;
+pub use super::player::Entity as Player;
+pub use super::room::Entity as Room;
 pub use super::user::Entity as User;
