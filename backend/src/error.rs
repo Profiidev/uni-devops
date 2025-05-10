@@ -1,7 +1,14 @@
 use rocket::{http::Status, response::Responder};
+use rocket_okapi::{
+  r#gen::OpenApiGenerator,
+  okapi::{
+    Map,
+    openapi3::{RefOr, Response, Responses},
+  },
+  response::OpenApiResponderInner,
+};
 use thiserror::Error;
 
-#[allow(unused)]
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[allow(unused)]
@@ -40,5 +47,66 @@ impl<'r, 'o: 'r> Responder<'r, 'o> for Error {
       Self::Conflict => Status::Conflict.respond_to(request),
       _ => Status::BadRequest.respond_to(request),
     }
+  }
+}
+
+impl OpenApiResponderInner for Error {
+  fn responses(_: &mut OpenApiGenerator) -> rocket_okapi::Result<Responses> {
+    let mut responses = Map::new();
+
+    responses.insert(
+      Status::Unauthorized.code.to_string(),
+      RefOr::Object(Response {
+        description:
+          "[Unauthorized](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401). The request requires user authentication. The client should authenticate itself to get the requested response."
+            .to_string(),
+        ..Default::default()
+      }),
+    );
+
+    responses.insert(
+      Status::Gone.code.to_string(),
+      RefOr::Object(Response {
+        description:
+          "[Gone](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/410). The resource requested is no longer available on the server and no forwarding address is known. A client should not repeat the request without modifications."
+            .to_string(),
+        ..Default::default()
+      }),
+    );
+
+    responses.insert(
+      Status::InternalServerError.code.to_string(),
+      RefOr::Object(Response {
+        description:
+          "[Internal Server Error](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500). An internal server error occurred. The server encountered an unexpected condition that prevented it from fulfilling the request."
+            .to_string(),
+        ..Default::default()
+      }),
+    );
+
+    responses.insert(
+      Status::Conflict.code.to_string(),
+      RefOr::Object(Response {
+        description:
+          "[Conflict](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/409). The request could not be completed due to a conflict with the current state of the target resource."
+            .to_string(),
+        ..Default::default()
+      }),
+    );
+
+    responses.insert(
+      Status::BadRequest.code.to_string(),
+      RefOr::Object(Response {
+        description:
+          "[Bad Request](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400). A client side error occurred. The request was malformed or invalid."
+            .to_string(),
+        ..Default::default()
+      }),
+    );
+
+    Ok(Responses {
+      responses,
+      ..Default::default()
+    })
   }
 }
