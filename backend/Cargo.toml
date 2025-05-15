@@ -18,7 +18,7 @@ rocket_okapi = { version = "0.9.0", features = [
 ] }
 schemars = { version = "0.8.22", features = ["uuid1", "chrono"] }
 sea-orm-rocket = "0.5.5"
-sea-orm = { version = "1.1.10", features = [
+sea-orm = { version = "1.1.11", features = [
   "sqlx-postgres",
   "runtime-tokio-rustls",
 ] }
