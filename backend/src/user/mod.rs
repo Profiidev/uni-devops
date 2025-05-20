@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::{
   auth::{jwt::JwtClaims, state::PasswordState, utils::hash_password},
   db::{DB, DBTrait},
-  error::Result,
+  error::{Error, Result},
 };
 
 pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
@@ -44,6 +44,16 @@ async fn register(
   pw: &State<PasswordState>,
 ) -> Result<()> {
   let db = conn.into_inner();
+
+  let existing = db
+    .tables()
+    .user()
+    .get_user_by_email(&req.email)
+    .await
+    .is_ok();
+  if existing {
+    return Err(Error::Conflict);
+  }
 
   let salt = SaltString::generate(OsRng {}).to_string();
   let password = hash_password(pw, &salt, &req.password)?;
