@@ -93,6 +93,7 @@ impl Room {
     }
   }
 
+  #[allow(unused)]
   async fn send_msg_to_all(&self, msg: GameMessage) {
     for player in self.players.values() {
       let _ = player.sender.send(msg.clone()).await;
