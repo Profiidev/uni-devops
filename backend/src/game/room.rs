@@ -10,10 +10,12 @@ use uuid::Uuid;
 use crate::{
   auth::jwt::JwtClaims,
   db::{DB, DBTrait},
-  error::Result,
+  error::{Error, Result},
 };
 
 use super::state::RoomState;
+
+const MAX_ROOMS: usize = 10;
 
 pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
   openapi_get_routes_spec![settings: create, delete, list]
@@ -36,6 +38,13 @@ async fn create(
   state: &State<RoomState>,
 ) -> Result<Json<CreateRoomRes>> {
   let db = conn.into_inner();
+
+  let count = db.tables().room().list(auth.sub).await?.len();
+
+  if count >= MAX_ROOMS {
+    return Err(Error::Conflict);
+  }
+
   let room = db
     .tables()
     .room()
