@@ -9,7 +9,6 @@ use sea_orm_rocket::Database;
 use tables::Tables;
 
 mod pool;
-#[allow(unused)]
 pub mod tables;
 
 #[derive(Database, Debug)]

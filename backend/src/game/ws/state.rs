@@ -22,6 +22,7 @@ pub struct Room {
 
 struct Player {
   id: Uuid,
+  name: String,
   sender: Sender<GameMessage>,
 }
 
@@ -35,6 +36,7 @@ impl GameState {
   pub async fn join_room(
     &mut self,
     id: Uuid,
+    name: String,
     player: Uuid,
   ) -> (Receiver<GameMessage>, Arc<Mutex<Room>>) {
     let room = self.rooms.entry(id).or_insert_with(|| {
@@ -45,11 +47,17 @@ impl GameState {
     });
 
     let (sender, receiver) = channel(100);
-    room
-      .lock()
-      .await
-      .players
-      .insert(player, Player { id: player, sender });
+    let mut room_guard = room.lock().await;
+
+    room_guard.players.insert(
+      player,
+      Player {
+        id: player,
+        name,
+        sender: sender.clone(),
+      },
+    );
+    let _ = sender.send(room_guard.room_info()).await;
 
     (receiver, room.clone())
   }
@@ -105,7 +113,7 @@ impl Room {
         .values()
         .map(|player| PlayerInfo {
           id: player.id,
-          name: player.id.to_string(),
+          name: player.name.clone(),
         })
         .collect(),
     })

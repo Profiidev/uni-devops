@@ -8,38 +8,56 @@ use rocket::{
   tokio::{self, sync::Mutex},
 };
 use rocket_okapi::{
-  okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings,
+  okapi::openapi3::OpenApi, openapi, openapi_get_spec, settings::OpenApiSettings,
 };
 use rocket_ws::{Channel, Message, WebSocket, result::Error};
+use sea_orm_rocket::Connection;
 use state::GameState;
 use uuid::Uuid;
 
-use crate::auth::jwt::JwtClaims;
+use crate::{
+  auth::jwt::JwtClaims,
+  db::{DB, DBTrait},
+  error::Result,
+};
 
 mod commands;
 mod messages;
 pub mod state;
 
 pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
-  openapi_get_routes_spec![settings: game]
+  (rocket::routes![game], openapi_get_spec![settings: doc_game])
 }
+
 /// # WebSocket endpoint for game updates
 ///
 /// This endpoint allows clients to connect to a game and send/receive updates
 /// for the related game session.
-#[openapi(tag = "game")]
+#[openapi(tag = "Game")]
 #[get("/<id>")]
-async fn game(
+#[allow(unused)]
+async fn doc_game(id: Uuid, _auth: JwtClaims) -> Result<()> {
+  let _ = id;
+  Ok(())
+}
+
+/// The dummy function above is needed because the `#[openapi]` macro does not support lifetimes
+#[get("/<id>")]
+async fn game<'a>(
   auth: JwtClaims,
   ws: WebSocket,
   id: Uuid,
-  state: &State<Arc<Mutex<GameState>>>,
-) -> Channel<'static> {
+  state: &'a State<Arc<Mutex<GameState>>>,
+  conn: Connection<'a, DB>,
+) -> Result<Channel<'a>> {
   log::info!("User {} connected to updater ws", auth.sub);
   let state = state.inner().clone();
-  let (mut recv, room) = state.lock().await.join_room(id, auth.sub).await;
 
-  ws.channel(move |mut stream| {
+  let db = conn.into_inner();
+  let user = db.tables().user().get_user(auth.sub).await?;
+  let (mut recv, room) = state.lock().await.join_room(id, user.name, auth.sub).await;
+
+  Ok(ws.channel(move |mut stream| {
     Box::pin(async move {
       loop {
         tokio::select! {
@@ -76,5 +94,5 @@ async fn game(
 
       Ok(())
     })
-  })
+  }))
 }
