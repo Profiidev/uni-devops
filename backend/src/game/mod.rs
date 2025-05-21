@@ -17,5 +17,9 @@ pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
 }
 
 pub fn state(server: Rocket<Build>) -> Rocket<Build> {
-  server.manage(RoomState::default()).manage(GameState::new())
+  server.manage(RoomState::default())
+}
+
+pub async fn async_state(server: Rocket<Build>) -> Rocket<Build> {
+  server.manage(GameState::new().await)
 }

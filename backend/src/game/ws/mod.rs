@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
 use rocket::{
   Route, State,
   futures::{SinkExt, StreamExt},
   get,
   serde::json,
-  tokio::{self, sync::Mutex},
+  tokio,
 };
 use rocket_okapi::{
   okapi::openapi3::OpenApi, openapi, openapi_get_spec, settings::OpenApiSettings,
@@ -47,15 +45,13 @@ async fn game<'a>(
   auth: JwtClaims,
   ws: WebSocket,
   id: Uuid,
-  state: &'a State<Arc<Mutex<GameState>>>,
+  state: &'a State<GameState>,
   conn: Connection<'a, DB>,
 ) -> Result<Channel<'a>> {
   log::info!("User {} connected to updater ws", auth.sub);
-  let state = state.inner().clone();
-
   let db = conn.into_inner();
   let user = db.tables().user().get_user(auth.sub).await?;
-  let (mut recv, room) = state.lock().await.join_room(id, user.name, auth.sub).await;
+  let (mut recv, room) = state.join_room(id, user.name, auth.sub).await;
 
   Ok(ws.channel(move |mut stream| {
     Box::pin(async move {
@@ -71,7 +67,7 @@ async fn game<'a>(
               }
               None => {
                 let _ = stream.close(None).await;
-                state.lock().await.leave_room(id, auth.sub).await;
+                state.leave_room(id, auth.sub).await;
                 break;
               }
             }
@@ -80,11 +76,11 @@ async fn game<'a>(
           ws_msg = stream.next() => {
             match ws_msg {
               Some(Ok(Message::Close(_)) | Err(Error::AlreadyClosed | Error::ConnectionClosed)) | None => {
-                state.lock().await.leave_room(id, auth.sub).await;
+                state.leave_room(id, auth.sub).await;
                 break;
               },
               Some(Ok(Message::Text(msg))) => {
-                room.lock().await.handle_cmd(auth.sub, msg).await;
+                room.handle_cmd(auth.sub, msg).await;
               },
               _ => (),
             }
