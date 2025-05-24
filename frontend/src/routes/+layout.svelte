@@ -4,10 +4,6 @@
   import '../app.css';
 
   let { children } = $props();
-  // example request
-  onMount(() => {
-    fetch(`${PUBLIC_BACKEND_URL}/api`);
-  });
 </script>
 
 {@render children()}
