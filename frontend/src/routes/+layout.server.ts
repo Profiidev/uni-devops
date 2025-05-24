@@ -1,9 +1,15 @@
 import { redirect } from '@sveltejs/kit';
 
-export const load = ({ cookies, url }) => {
-  let cookie = cookies.get('token');
+export const load = async ({ cookies, url }) => {
+  const cookie = cookies.get('token');
 
-  if (!cookie && url.pathname !== '/login') {
-    redirect(302, '/login');
+  if (url.pathname !== '/login') {
+    if (!cookie) {
+      throw redirect(302, '/login');
+    }
+  } else {
+    if (cookie) {
+      throw redirect(302, '/');
+    }
   }
 };
