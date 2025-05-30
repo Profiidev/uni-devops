@@ -1,7 +1,9 @@
 name: "Terraform Plan"
 
 on:
-  pull_request:
+  push:
+    tags:
+      - "v*.*.*"
 
 env:
   TF_CLOUD_ORGANIZATION: "dealing-with-devops"

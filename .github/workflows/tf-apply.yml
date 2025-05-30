@@ -1,9 +1,7 @@
 name: "Terraform Apply"
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  pull_request:
 
 env:
   TF_CLOUD_ORGANIZATION: "dealing-with-devops"
