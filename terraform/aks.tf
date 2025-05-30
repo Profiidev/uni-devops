@@ -19,14 +19,6 @@ resource "azurerm_kubernetes_cluster" "k8s" {
     network_plugin    = "kubenet"
     load_balancer_sku = "standard"
   }
-
-  linux_profile {
-    admin_username = var.username
-
-    ssh_key {
-      key_data = file("${path.module}/authorized_keys")
-    }
-  }
 }
 
 resource "azurerm_public_ip" "public_ip" {
