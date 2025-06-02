@@ -1,7 +1,7 @@
 name: "Terraform Apply"
 
 on:
-  pull_request:
+  workflow_call:
 
 env:
   TF_CLOUD_ORGANIZATION: "dealing-with-devops"
@@ -15,6 +15,10 @@ jobs:
   terraform:
     name: "Terraform Apply"
     runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.ref, 'refs/tags/') &&
+      github.event.workflow_run.conclusion == 'success'
     permissions: # granular permissions
       # so GitHub can check out this repo using the default github.token
       contents: read
