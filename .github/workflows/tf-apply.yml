@@ -2,7 +2,6 @@ name: "Terraform Apply"
 
 on:
   workflow_call:
-  pull_request:
 
 env:
   ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -32,4 +31,4 @@ jobs:
         run: terraform validate -no-color
 
       - name: Terraform Apply
-        run: terraform apply -no-color -auto-approve
+        run: terraform apply -no-color -auto-approve -lock-timeout=5m
