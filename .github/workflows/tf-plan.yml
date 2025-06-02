@@ -33,7 +33,6 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan -no-color -input=false -out .planfile
-        continue-on-error: true
       - name: Post PR comment
         uses: borchero/terraform-plan-comment@v2
         with:

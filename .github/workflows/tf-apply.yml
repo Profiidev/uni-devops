@@ -4,46 +4,31 @@ on:
   workflow_call:
 
 env:
-  TF_CLOUD_ORGANIZATION: "dealing-with-devops"
-  TF_API_TOKEN: "${{ secrets.TF_API_TOKEN }}"
-  TF_WORKSPACE: "dealing-with-devops"
-  CONFIG_DIRECTORY: "./terraform"
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 
-
-# https://github.com/hashicorp-education/learn-terraform-github-actions
 jobs:
   terraform:
     name: "Terraform Apply"
     runs-on: ubuntu-latest
-    if: |
-      github.event.workflow_run.event == 'push' &&
-      startsWith(github.event.workflow_run.ref, 'refs/tags/') &&
-      github.event.workflow_run.conclusion == 'success'
-    permissions: # granular permissions
-      # so GitHub can check out this repo using the default github.token
+    defaults:
+      run:
+        working-directory: "./terraform"
+    permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Upload Configuration
-        uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
-        id: apply-upload
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
         with:
-          workspace: ${{ env.TF_WORKSPACE }}
-          directory: ${{ env.CONFIG_DIRECTORY }}
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
-      - name: Create Apply Run
-        uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
-        id: apply-run
-        with:
-          workspace: ${{ env.TF_WORKSPACE }}
-          configuration_version: ${{ steps.apply-upload.outputs.configuration_version_id }}
+      - name: Terraform Init
+        run: terraform init -input=false
 
-      - name: Apply
-        uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
-        if: fromJSON(steps.apply-run.outputs.payload).data.attributes.actions.IsConfirmable
-        id: apply
-        with:
-          run: ${{ steps.apply-run.outputs.run_id }}
-          comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
+      - name: Terraform Validate
+        run: terraform validate -no-color
+
+      - name: Terraform Apply
+        run: terraform apply -no-color -auto-approve
