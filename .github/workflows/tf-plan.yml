@@ -39,3 +39,4 @@ jobs:
         with:
           token: ${{ github.token }}
           planfile: .planfile
+          working-directory: "./terraform"
