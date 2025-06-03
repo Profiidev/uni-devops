@@ -12,9 +12,10 @@ resource "helm_release" "nginx" {
   namespace  = "nginx"
 
   values = [templatefile("${path.module}/templates/nginx.values.tftpl", {
-    ingress_class  = var.ingress_class
-    resource_group = var.k8s_resource_group_name
-    pip_name       = var.public_ip_name
+    ingress_class    = var.ingress_class
+    resource_group   = var.k8s_resource_group_name
+    pip_name         = var.public_ip_name
+    load_balancer_ip = var.public_ip
   })]
 
   depends_on = [

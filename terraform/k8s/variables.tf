@@ -19,7 +19,11 @@ variable "k8s_resource_group_name" {
 }
 
 variable "public_ip_name" {
-  type    = string
+  type = string
+}
+
+variable "public_ip" {
+  type = string
 }
 
 variable "ingress_class" {
