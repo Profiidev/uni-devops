@@ -17,7 +17,7 @@ resource "azurerm_kubernetes_cluster" "k8s" {
 
   network_profile {
     network_plugin    = "kubenet"
-    load_balancer_sku = "standard"
+    load_balancer_sku = "basic"
   }
 }
 
@@ -26,6 +26,6 @@ resource "azurerm_public_ip" "public_ip" {
   location            = var.location
   resource_group_name = azurerm_kubernetes_cluster.k8s.resource_group_name
   allocation_method   = "Static"
-  sku                 = "Standard"
+  sku                 = "Basic"
   domain_name_label   = var.name
 }

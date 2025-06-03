@@ -14,8 +14,12 @@ variable "k8s_cluster_ca_certificate" {
   type = string
 }
 
-variable "public_ip" {
+variable "k8s_resource_group_name" {
   type = string
+}
+
+variable "public_ip_name" {
+  type    = string
 }
 
 variable "ingress_class" {
