@@ -30,8 +30,15 @@ resource "azurerm_kubernetes_cluster" "k8s" {
 resource "azurerm_public_ip" "public_ip" {
   name                = var.name
   location            = var.location
-  resource_group_name = azurerm_kubernetes_cluster.k8s.resource_group_name
+  resource_group_name = azurerm_kubernetes_cluster.k8s.node_resource_group
   allocation_method   = "Static"
   sku                 = "Basic"
   domain_name_label   = var.name
+}
+
+resource "azurerm_role_assignment" "lb_ip_aks" {
+  principal_id                     = azurerm_kubernetes_cluster.k8s.kublet_identity[0].object_id
+  role_definition_name             = "Network Contributor"
+  scope                            = azurerm_kubernetes_cluster.k8s.node_resource_group_id
+  skip_service_principal_aad_check = true
 }
