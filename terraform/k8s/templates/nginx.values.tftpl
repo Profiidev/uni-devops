@@ -1,0 +1,13 @@
+controller:
+  ingressClassResource:
+    name: ${ingress_class}
+    enabled: true
+    default: true
+    controllerValue: "k8s.io/ingress-nginx"
+    parameters: {}
+
+  ingressClass: ${ingress_class}
+  watchIngressWithoutClass: false
+
+  service:
+    loadBalancerIP: ${load_balancer_ip}

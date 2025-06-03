@@ -35,4 +35,6 @@ module "k8s" {
   k8s_certificate            = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].client_certificate)
   k8s_key                    = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].client_key)
   k8s_cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].cluster_ca_certificate)
+
+  public_ip = azurerm_public_ip.public_ip.ip_address
 }
