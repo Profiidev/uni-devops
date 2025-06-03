@@ -22,10 +22,6 @@ variable "public_ip_name" {
   type = string
 }
 
-variable "public_ip" {
-  type = string
-}
-
 variable "ingress_class" {
   type    = string
   default = "nginx"
