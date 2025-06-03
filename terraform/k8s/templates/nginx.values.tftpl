@@ -10,4 +10,6 @@ controller:
   watchIngressWithoutClass: false
 
   service:
-    loadBalancerIP: ${load_balancer_ip}
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-ip: ${load_balancer_ip}
+    type: LoadBalancer
