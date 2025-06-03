@@ -38,5 +38,5 @@ module "k8s" {
 
   public_ip               = azurerm_public_ip.public_ip.ip_address
   public_ip_name          = azurerm_public_ip.public_ip.name
-  k8s_resource_group_name = azurerm_kubernetes_cluster.k8s.node_resource_group
+  k8s_resource_group_name = azurerm_kubernetes_cluster.k8s.resource_group_name
 }
