@@ -32,3 +32,13 @@ variable "cert_ns" {
   type    = string
   default = "cert-manager"
 }
+
+variable "cert_issuer_staging" {
+  type    = string
+  default = "letsencrypt-staging-issuer"
+}
+
+variable "cert_issuer_prod" {
+  type    = string
+  default = "letsencrypt-prod-issuer"
+}
