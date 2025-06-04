@@ -22,3 +22,13 @@ variable "ingress_class" {
 variable "dns_prefix" {
   type = string
 }
+
+variable "nginx_ns" {
+  type    = string
+  default = "nginx"
+}
+
+variable "cert_ns" {
+  type    = string
+  default = "cert-manager"
+}
