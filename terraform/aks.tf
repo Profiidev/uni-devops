@@ -26,12 +26,3 @@ resource "azurerm_kubernetes_cluster" "k8s" {
     load_balancer_sku = "standard"
   }
 }
-
-resource "azurerm_public_ip" "public_ip" {
-  name                = var.name
-  location            = var.location
-  resource_group_name = azurerm_kubernetes_cluster.k8s.node_resource_group
-  allocation_method   = "Static"
-  sku                 = "Standard"
-  domain_name_label   = var.name
-}
