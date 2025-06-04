@@ -13,3 +13,4 @@ controller:
     annotations:
       service.beta.kubernetes.io/azure-dns-label-name: "${dns_prefix}"
     type: LoadBalancer
+    externalTrafficPolicy: Local
