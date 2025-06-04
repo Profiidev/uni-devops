@@ -36,5 +36,5 @@ module "k8s" {
   k8s_key                    = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].client_key)
   k8s_cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].cluster_ca_certificate)
 
-  dns_prefix = var.dns_prefix
+  dns_prefix = var.name
 }

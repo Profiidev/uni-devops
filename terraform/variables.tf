@@ -7,7 +7,7 @@ variable "location" {
 variable "name" {
   type        = string
   description = "The name of the Azure Kubernetes Service (AKS) cluster."
-  default     = "dealing-with-devops-aks"
+  default     = "dealing-with-devops"
 }
 
 variable "resource_group_name" {
@@ -20,10 +20,4 @@ variable "username" {
   type        = string
   description = "The username for the AKS cluster."
   default     = "devops"
-}
-
-variable "dns_prefix" {
-  type        = string
-  description = "The DNS prefix for the AKS cluster."
-  default     = "dealing-with-devops"
 }

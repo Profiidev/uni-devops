@@ -1,3 +1,3 @@
 output "domain" {
-  value = "${var.dns_prefix}.${var.location}.cloudapp.azure.com"
+  value = "${var.name}.${var.location}.cloudapp.azure.com"
 }
