@@ -1,0 +1,94 @@
+use rocket::{
+  Route, State,
+  futures::{SinkExt, StreamExt},
+  get,
+  serde::json,
+  tokio,
+};
+use rocket_okapi::{
+  okapi::openapi3::OpenApi, openapi, openapi_get_spec, settings::OpenApiSettings,
+};
+use rocket_ws::{Channel, Message, WebSocket, result::Error};
+use sea_orm_rocket::Connection;
+use state::GameState;
+use uuid::Uuid;
+
+use crate::{
+  auth::jwt::JwtClaims,
+  db::{DB, DBTrait},
+  error::Result,
+};
+
+mod commands;
+mod messages;
+pub mod state;
+
+pub fn routes(settings: &OpenApiSettings) -> (Vec<Route>, OpenApi) {
+  (rocket::routes![game], openapi_get_spec![settings: doc_game])
+}
+
+/// # WebSocket endpoint for game updates
+///
+/// This endpoint allows clients to connect to a game and send/receive updates
+/// for the related game session.
+#[openapi(tag = "Game")]
+#[get("/<id>")]
+#[allow(unused)]
+async fn doc_game(id: Uuid, _auth: JwtClaims) -> Result<()> {
+  let _ = id;
+  Ok(())
+}
+
+/// The dummy function above is needed because the `#[openapi]` macro does not support lifetimes
+#[get("/<id>")]
+async fn game<'a>(
+  auth: JwtClaims,
+  ws: WebSocket,
+  id: Uuid,
+  state: &'a State<GameState>,
+  conn: Connection<'a, DB>,
+) -> Result<Channel<'a>> {
+  log::info!("User {} connected to updater ws", auth.sub);
+  let db = conn.into_inner();
+  let user = db.tables().user().get_user(auth.sub).await?;
+  let (mut recv, room) = state.join_room(id, user.name, auth.sub).await;
+
+  Ok(ws.channel(move |mut stream| {
+    Box::pin(async move {
+      loop {
+        tokio::select! {
+          update = recv.recv() => {
+            match update {
+              Some(message) => {
+                let message = json::to_string(&message).unwrap();
+                let message = Message::Text(message);
+
+                let _ = stream.send(message).await;
+              }
+              None => {
+                let _ = stream.close(None).await;
+                state.leave_room(id, auth.sub).await;
+                break;
+              }
+            }
+          }
+
+          ws_msg = stream.next() => {
+            match ws_msg {
+              Some(Ok(Message::Close(_)) | Err(Error::AlreadyClosed | Error::ConnectionClosed)) | None => {
+                state.leave_room(id, auth.sub).await;
+                break;
+              },
+              Some(Ok(Message::Text(msg))) => {
+                room.handle_cmd(auth.sub, msg).await;
+              },
+              _ => (),
+            }
+          }
+        }
+      }
+
+      Ok(())
+    })
+  }))
+}

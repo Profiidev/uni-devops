@@ -1,0 +1,28 @@
+resource "azurerm_kubernetes_cluster" "k8s" {
+  location            = var.location
+  name                = var.name
+  resource_group_name = var.resource_group_name
+  dns_prefix          = var.name
+  kubernetes_version  = "1.33"
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  default_node_pool {
+    name       = "agentpool"
+    vm_size    = "Standard_B2s"
+    node_count = 1
+
+    upgrade_settings {
+      drain_timeout_in_minutes      = 0
+      max_surge                     = "10%"
+      node_soak_duration_in_minutes = 0
+    }
+  }
+
+  network_profile {
+    network_plugin    = "kubenet"
+    load_balancer_sku = "standard"
+  }
+}

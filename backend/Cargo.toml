@@ -8,7 +8,7 @@ dotenv = "0.15.0"
 env_logger = "0.11.8"
 fern = "0.7.1"
 log = "0.4.27"
-openssl = { version = "0.10.72", features = ["vendored"] }
+openssl = { version = "0.10.73", features = ["vendored"] }
 rocket = "0.5.1"
 rocket_cors = "0.6.0"
 rocket_okapi = { version = "0.9.0", features = [
@@ -18,14 +18,14 @@ rocket_okapi = { version = "0.9.0", features = [
 ] }
 schemars = { version = "0.8.22", features = ["uuid1", "chrono"] }
 sea-orm-rocket = "0.5.5"
-sea-orm = { version = "1.1.11", features = [
+sea-orm = { version = "1.1.12", features = [
   "sqlx-postgres",
   "runtime-tokio-rustls",
 ] }
 entity = { path = "entity" }
 migration = { path = "migration" }
 thiserror = "2.0.12"
-uuid = { version = "1.16.0", features = ["v4"] }
+uuid = { version = "1.17.0", features = ["v4"] }
 chrono = "0.4.41"
 rsa = "0.9.8"
 serde = { version = "1.0.219", features = ["derive"] }
@@ -34,6 +34,8 @@ argon2 = { version = "0.5.3", features = ["std"] }
 base64 = "0.22.1"
 serde_json = "1.0.140"
 image = "0.25.6"
+rocket_ws = "0.1.1"
+async-nats = "0.41.0"
 
 [[bin]]
 name = "backend"
