@@ -2,7 +2,6 @@ name: "Terraform Apply"
 
 on:
   workflow_call:
-  pull_request:
 
 env:
   ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
