@@ -7,7 +7,6 @@ import {
   post
 } from '$lib/util.svelte';
 import { browser } from '$app/environment';
-import type { Cookies } from '@sveltejs/kit';
 
 let encrypt: false | undefined | JSEncrypt = $state(browser && undefined);
 
