@@ -1,0 +1,16 @@
+controller:
+  ingressClassResource:
+    name: ${ingress_class}
+    enabled: true
+    default: true
+    controllerValue: "k8s.io/ingress-nginx"
+    parameters: {}
+
+  ingressClass: ${ingress_class}
+  watchIngressWithoutClass: false
+
+  service:
+    annotations:
+      service.beta.kubernetes.io/azure-dns-label-name: "${dns_prefix}"
+    type: LoadBalancer
+    externalTrafficPolicy: Local
