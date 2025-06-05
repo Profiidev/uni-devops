@@ -84,3 +84,8 @@ export const password_register = async (
   }
   return res;
 };
+
+export const test_token = async () => {
+  let res = await get<boolean>('/auth/test_token', ResponseType.Json);
+  return typeof res === 'boolean' && res;
+};
