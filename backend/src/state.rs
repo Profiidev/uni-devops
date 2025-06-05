@@ -70,6 +70,7 @@ async fn manage_async_state(server: Rocket<Build>) -> fairing::Result {
 
   let states = AsyncAuthStates::new(db).await;
   let server = states.add(server);
+  let server = game::async_state(server).await;
 
   Ok(server)
 }
