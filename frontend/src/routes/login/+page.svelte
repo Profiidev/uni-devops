@@ -15,7 +15,8 @@
       goto('/');
     } else {
       console.log('There was an Error while signing up:', res);
-      error = "Es gab einen Fehler bei der Registrierung. Bitte überprüfe deine Eingaben.";
+      error =
+        'Es gab einen Fehler bei der Registrierung. Bitte überprüfe deine Eingaben.';
     }
   };
 
@@ -26,7 +27,8 @@
       goto('/');
     } else {
       console.log('There was an Error while signing in:', res);
-      error = "Es gab einen Fehler beim Anmelden. Bitte überprüfe deine Eingaben.";
+      error =
+        'Es gab einen Fehler beim Anmelden. Bitte überprüfe deine Eingaben.';
     }
   };
 </script>
@@ -35,7 +37,7 @@
   <h1>Dealing With DevOps</h1>
 
   <div class="login-form">
-    <h2>{loginToggle ? 'Anmelden' : 'Account erstellen'}</h2>
+    <h2>{loginToggle ? 'Sign in to DevOps' : 'Account Creation'}</h2>
 
     <div class="input-container">
       <p>Email:</p>
@@ -56,25 +58,27 @@
     </div>
 
     {#if loginToggle}
-      <button class="primary-button" onclick={login}>Anmelden</button>
+      <button class="primary-button" onclick={login}>Sign In</button>
     {:else}
-      <button class="primary-button" onclick={register}>Account erstellen</button>
+      <button class="primary-button" onclick={register}>Sign Up</button>
     {/if}
 
     <div class="toggle-container">
       <p>
-        {loginToggle
-          ? 'Noch keinen Account?'
-          : 'Bereits einen Account?'}
+        {loginToggle ? 'New to Devops?' : 'Already have an account?'}
       </p>
-      <button class="toggle-button" onclick={() => (loginToggle = !loginToggle, error = '')}>
-        {loginToggle ? 'Registrieren' : 'Anmelden'}
+      <button
+        class="toggle-button"
+        onclick={() => ((loginToggle = !loginToggle), (error = ''))}
+      >
+        {loginToggle ? 'Sign up' : 'Sign in'}
       </button>
-  </div>
+    </div>
 
     {#if error}
       <p class="error-message">{error}</p>
     {/if}
+  </div>
 </main>
 
 <style>
