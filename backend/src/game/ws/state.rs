@@ -14,7 +14,7 @@ use rocket::{
 };
 use uuid::Uuid;
 
-use crate::game::ws::messages::InvalidCommand;
+use crate::{db::tables::Tables, error::Result, game::ws::messages::InvalidCommand};
 
 use super::{
   commands::GameCommand,
@@ -65,7 +65,8 @@ impl GameState {
     id: Uuid,
     name: String,
     player: Uuid,
-  ) -> (Receiver<GameMessage>, Arc<Room>) {
+    db: &Tables<'_>,
+  ) -> Result<(Receiver<GameMessage>, Arc<Room>)> {
     let nats_url = self.nats_url.clone();
     let nats_update_subject_ = format!("{}.{}", self.nats_update_subject, id);
     let nats_update_subject = Subject::from(nats_update_subject_.as_str());
@@ -131,9 +132,9 @@ impl GameState {
         sender: sender.clone(),
       },
     );
-    let _ = sender.send(room.room_info().await).await;
+    let _ = sender.send(room.room_info(db).await?).await;
 
-    (receiver, room.clone())
+    Ok((receiver, room.clone()))
   }
 
   pub async fn leave_room(&self, id: Uuid, player: Uuid) {
@@ -155,7 +156,7 @@ impl GameState {
 }
 
 impl Room {
-  pub async fn handle_cmd(&self, player: Uuid, cmd_json: String) {
+  pub async fn handle_cmd(&self, player: Uuid, cmd_json: String, db: &Tables<'_>) -> Result<()> {
     let cmd: GameCommand = match serde_json::from_str(&cmd_json) {
       Ok(cmd) => cmd,
       Err(_) => {
@@ -165,17 +166,20 @@ impl Room {
             GameMessage::InvalidCommand(InvalidCommand { message: cmd_json }),
           )
           .await;
-        return;
+        return Ok(());
       }
     };
 
     match cmd {
       GameCommand::RoomInfo => {
         self
-          .send_msg_to_current_player(player, self.room_info().await)
+          .send_msg_to_current_player(player, self.room_info(db).await?)
           .await;
       }
+      _ => (),
     }
+
+    Ok(())
   }
 
   #[allow(unused)]
@@ -199,9 +203,11 @@ impl Room {
     }
   }
 
-  async fn room_info(&self) -> GameMessage {
+  async fn room_info(&self, db: &Tables<'_>) -> Result<GameMessage> {
     let players = self.players.lock().await;
-    GameMessage::RoomInfo(RoomInfo {
+    let room = db.room().get(self.id).await?;
+
+    Ok(GameMessage::RoomInfo(RoomInfo {
       id: self.id,
       players: players
         .values()
@@ -210,6 +216,10 @@ impl Room {
           name: player.name.clone(),
         })
         .collect(),
-    })
+      game_running: room.game_running,
+      starting_cash: room.starting_cash,
+      small_blind: room.small_blind,
+      owner: room.owner,
+    }))
   }
 }
