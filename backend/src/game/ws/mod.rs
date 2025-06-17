@@ -19,6 +19,7 @@ use crate::{
   error::Result,
 };
 
+mod card;
 mod commands;
 mod messages;
 pub mod state;
