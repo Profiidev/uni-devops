@@ -4,8 +4,13 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum GameMessage {
-  InvalidCommand(String),
+  InvalidCommand(InvalidCommand),
   RoomInfo(RoomInfo),
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct InvalidCommand {
+  pub message: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

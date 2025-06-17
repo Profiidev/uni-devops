@@ -14,6 +14,8 @@ use rocket::{
 };
 use uuid::Uuid;
 
+use crate::game::ws::messages::InvalidCommand;
+
 use super::{
   commands::GameCommand,
   messages::{GameMessage, PlayerInfo, RoomInfo},
@@ -158,7 +160,10 @@ impl Room {
       Ok(cmd) => cmd,
       Err(_) => {
         self
-          .send_msg_to_current_player(player, GameMessage::InvalidCommand(cmd_json))
+          .send_msg_to_current_player(
+            player,
+            GameMessage::InvalidCommand(InvalidCommand { message: cmd_json }),
+          )
           .await;
         return;
       }
