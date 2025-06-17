@@ -170,13 +170,10 @@ impl Room {
       }
     };
 
-    match cmd {
-      GameCommand::RoomInfo => {
-        self
-          .send_msg_to_current_player(player, self.room_info(db).await?)
-          .await;
-      }
-      _ => (),
+    if let GameCommand::RoomInfo = cmd {
+      self
+        .send_msg_to_current_player(player, self.room_info(db).await?)
+        .await;
     }
 
     Ok(())
