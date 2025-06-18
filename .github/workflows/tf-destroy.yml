@@ -9,7 +9,7 @@ env:
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   # Dummy image version
-  TF_image_tag: v0.1.0
+  TF_VAR_image_tag: v0.1.0
 
 jobs:
   terraform:
