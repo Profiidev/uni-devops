@@ -109,8 +109,14 @@ export type PlayerAction =
 
 export type RoundEnded = {
   type: MessageType.RoundEnded;
-  winnings: [string, number][]; // uuid and amount won
-  revealedCards: [string, [Card, Card]][]; // uuid and cards
+  players: PlayerEndedInfo[];
+};
+
+export type PlayerEndedInfo = {
+  id: string; // uuid
+  cards?: [Card, Card]; // Only present if the player did not fold and more than 2 players are left because only then the cards are revealed
+  bestHand?: Hand; // Same as cards
+  winnings: number;
 };
 
 export type GameEnded = {
@@ -149,3 +155,85 @@ export enum Suit {
   Clubs = 'Clubs',
   Spades = 'Spades'
 }
+
+export type Hand =
+  | HighCard
+  | OnePair
+  | TwoPair
+  | ThreeOfAKind
+  | Straight
+  | Flush
+  | FullHouse
+  | FourOfAKind
+  | StraightFlush
+  | RoyalFlush;
+
+export enum HandType {
+  HighCard = 'HighCard',
+  OnePair = 'OnePair',
+  TwoPair = 'TwoPair',
+  ThreeOfAKind = 'ThreeOfAKind',
+  Straight = 'Straight',
+  Flush = 'Flush',
+  FullHouse = 'FullHouse',
+  FourOfAKind = 'FourOfAKind',
+  StraightFlush = 'StraightFlush',
+  RoyalFlush = 'RoyalFlush'
+}
+
+export type HighCard = {
+  type: HandType.HighCard;
+  cards: [Rank, Rank, Rank, Rank, Rank]; // 5 ranks in descending order
+};
+
+export type OnePair = {
+  type: HandType.OnePair;
+  rank: Rank;
+  kickers: [Rank, Rank, Rank]; // 3 kickers in descending order
+};
+
+export type TwoPair = {
+  type: HandType.TwoPair;
+  highPair: Rank; // Higher pair
+  lowPair: Rank; // Lower pair
+  kicker: Rank; // kicker
+};
+
+export type ThreeOfAKind = {
+  type: HandType.ThreeOfAKind;
+  rank: Rank;
+  kickers: [Rank, Rank]; // 2 kickers in descending order
+};
+
+export type Straight = {
+  type: HandType.Straight;
+  rank: Rank; // Highest rank in the straight
+};
+
+export type Flush = {
+  type: HandType.Flush;
+  suit: Suit; // Suit of the flush
+};
+
+export type FullHouse = {
+  type: HandType.FullHouse;
+  triplet: Rank; // Rank of the triplet
+  pair: Rank; // Rank of the pair
+};
+
+export type FourOfAKind = {
+  type: HandType.FourOfAKind;
+  rank: Rank; // Rank of the four of a kind
+  kicker: Rank; // Kicker
+};
+
+export type StraightFlush = {
+  type: HandType.StraightFlush;
+  rank: Rank; // Highest rank in the straight flush
+  suit: Suit; // Suit of the straight flush
+};
+
+export type RoyalFlush = {
+  type: HandType.RoyalFlush;
+  suit: Suit; // Suit of the royal flush
+};

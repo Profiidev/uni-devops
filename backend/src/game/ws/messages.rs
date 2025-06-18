@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::game::ws::card::Card;
+use crate::game::ws::card::{Card, Hand};
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
@@ -85,8 +85,15 @@ pub struct PlayerGameInfo {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct RoundEnded {
-  pub winnings: Vec<(Uuid, i32)>,
-  pub revealed_cards: Vec<(Uuid, [Card; 2])>,
+  pub players: Vec<PlayerEndedInfo>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PlayerEndedInfo {
+  pub id: Uuid,
+  pub cards: Option<[Card; 2]>,
+  pub best_hand: Option<Hand>,
+  pub winnings: i32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
