@@ -83,6 +83,7 @@ impl GameState {
   }
 
   pub fn handle_cmd(&mut self, cmd: GameCommand, player: Uuid) -> Option<GameMessage> {
+    // player leaves and it is his turn
     match cmd {
       GameCommand::Call => (),
       GameCommand::Check => (),

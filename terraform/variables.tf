@@ -21,3 +21,8 @@ variable "username" {
   description = "The username for the AKS cluster."
   default     = "devops"
 }
+
+variable "version" {
+  type        = string
+  description = "The image version to deploy"
+}
