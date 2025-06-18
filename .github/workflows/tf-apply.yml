@@ -3,7 +3,7 @@ name: 'Terraform Apply'
 on:
   workflow_call:
     inputs:
-      tf_version:
+      image_tag:
         description: 'The image tag to deploy'
         required: true
         type: string
@@ -13,7 +13,7 @@ env:
   ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-  TF_version: ${{ inputs.tf_version }}
+  TF_image_tag: ${{ inputs.image_tag }}
 
 jobs:
   terraform:

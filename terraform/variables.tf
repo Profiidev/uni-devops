@@ -22,7 +22,7 @@ variable "username" {
   default     = "devops"
 }
 
-variable "version" {
+variable "image_tag" {
   type        = string
   description = "The image version to deploy"
 }
