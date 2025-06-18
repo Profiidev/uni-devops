@@ -3,7 +3,7 @@ use rocket_okapi::{
   get_nested_endpoints_and_docs, okapi::openapi3::OpenApi, settings::OpenApiSettings,
 };
 use state::RoomState;
-use ws::state::GameState;
+use ws::state::GlobalGameState;
 
 mod room;
 mod state;
@@ -21,5 +21,5 @@ pub fn state(server: Rocket<Build>) -> Rocket<Build> {
 }
 
 pub async fn async_state(server: Rocket<Build>) -> Rocket<Build> {
-  server.manage(GameState::new().await)
+  server.manage(GlobalGameState::new().await)
 }

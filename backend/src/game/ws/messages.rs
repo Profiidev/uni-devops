@@ -9,14 +9,16 @@ pub enum GameMessage {
   InvalidCommand(InvalidCommand),
   RoomInfo(RoomInfo),
   GameInfo(GameInfo),
-  GameStarted(GameStarted),
+  GameStarted(GameInfo),
   PlayerJoined(PlayerInfo),
   PlayerLeft(PlayerInfo),
-  PlayerTurn(PlayerTurn),
   YourCards(YourCards),
+  PlayerTurn(PlayerTurn),
   CardRevealed(Card),
   PlayerActed(PlayerActed),
+  RoundEnded(RoundEnded),
   GameEnded(GameEnded),
+  BackToLobby,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -82,12 +84,12 @@ pub struct PlayerGameInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct GameEnded {
+pub struct RoundEnded {
   pub winnings: Vec<(Uuid, i32)>,
   pub revealed_cards: Vec<(Uuid, [Card; 2])>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct GameStarted {
-  pub small_blind: Uuid,
+pub struct GameEnded {
+  pub winner: Uuid,
 }

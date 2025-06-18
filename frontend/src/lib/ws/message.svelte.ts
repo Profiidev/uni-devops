@@ -9,7 +9,9 @@ export type Message =
   | YourCards
   | CardRevealed
   | PlayerActed
-  | GameEnded;
+  | RoundEnded
+  | GameEnded
+  | BackToLobby;
 
 export enum MessageType {
   InvalidCommand = 'InvalidCommand',
@@ -22,7 +24,9 @@ export enum MessageType {
   YourCards = 'YourCards',
   CardRevealed = 'CardRevealed',
   PlayerActed = 'PlayerActed',
-  GameEnded = 'GameEnded'
+  RoundEnded = 'RoundEnded',
+  GameEnded = 'GameEnded',
+  BackToLobby = 'BackToLobby'
 }
 
 export type RoomInfo = {
@@ -57,8 +61,7 @@ export type PlayerGameInfo = {
 
 export type GameStarted = {
   type: MessageType.GameStarted;
-  smallBlind: string; // uuid
-};
+} & GameInfo;
 
 export type PlayerJoined = {
   type: MessageType.PlayerJoined;
@@ -104,10 +107,19 @@ export type PlayerAction =
       amount: number;
     };
 
-export type GameEnded = {
-  type: MessageType.GameEnded;
+export type RoundEnded = {
+  type: MessageType.RoundEnded;
   winnings: [string, number][]; // uuid and amount won
   revealedCards: [string, [Card, Card]][]; // uuid and cards
+};
+
+export type GameEnded = {
+  type: MessageType.GameEnded;
+  winner: string; // uuid
+};
+
+export type BackToLobby = {
+  type: MessageType.BackToLobby;
 };
 
 export type Card = {

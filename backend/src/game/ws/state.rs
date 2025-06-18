@@ -12,19 +12,27 @@ use rocket::{
     task::JoinHandle,
   },
 };
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{db::tables::Tables, error::Result, game::ws::messages::InvalidCommand};
+use crate::{
+  db::tables::Tables,
+  error::Result,
+  game::ws::{
+    game_state::GameState,
+    messages::{InvalidCommand, PlayerTurn, YourCards},
+  },
+};
 
 use super::{
   commands::GameCommand,
   messages::{GameMessage, PlayerInfo, RoomInfo},
 };
 
-type Rooms = Arc<Mutex<HashMap<Uuid, Arc<Room>>>>;
+type Rooms = Arc<Mutex<HashMap<Uuid, Arc<Mutex<Room>>>>>;
 type Players = Arc<Mutex<HashMap<Uuid, Player>>>;
 
-pub struct GameState {
+pub struct GlobalGameState {
   nats_url: String,
   nats_update_subject: String,
   rooms: Rooms,
@@ -33,6 +41,7 @@ pub struct GameState {
 pub struct Room {
   id: Uuid,
   players: Players,
+  game_state: Option<GameState>,
   nats_task: JoinHandle<()>,
   nats_notify: Arc<Notify>,
   nats_sender: Client,
@@ -45,7 +54,13 @@ struct Player {
   sender: Sender<GameMessage>,
 }
 
-impl GameState {
+#[derive(Serialize, Deserialize, Clone)]
+struct NatsMessage {
+  receiver: Option<Uuid>,
+  msg: GameMessage,
+}
+
+impl GlobalGameState {
   pub async fn new() -> Self {
     let nats_url = std::env::var("NATS_URL").expect("Failed to load NATS_URL");
     let nats_update_subject =
@@ -66,7 +81,7 @@ impl GameState {
     name: String,
     player: Uuid,
     db: &Tables<'_>,
-  ) -> Result<(Receiver<GameMessage>, Arc<Room>)> {
+  ) -> Result<(Receiver<GameMessage>, Arc<Mutex<Room>>)> {
     let nats_url = self.nats_url.clone();
     let nats_update_subject_ = format!("{}.{}", self.nats_update_subject, id);
     let nats_update_subject = Subject::from(nats_update_subject_.as_str());
@@ -92,13 +107,19 @@ impl GameState {
             return;
           }
           Some(msg) = sub.next() => {
-            let Ok(msg) = serde_json::from_slice::<GameMessage>(&msg.payload) else {
+            let Ok(msg) = serde_json::from_slice::<NatsMessage>(&msg.payload) else {
               log::warn!("Failed to parse message: {:?}", msg);
               return;
             };
             let players = players_.lock().await;
-            for player in players.values() {
-              let _ = player.sender.send(msg.clone()).await;
+            if let Some(receiver) = msg.receiver {
+              if let Some(player) = players.get(&receiver) {
+                let _ = player.sender.send(msg.msg.clone()).await;
+              }
+            } else {
+              for player in players.values() {
+                let _ = player.sender.send(msg.msg.clone()).await;
+              }
             }
           }
           else => {
@@ -110,16 +131,25 @@ impl GameState {
     });
 
     let mut rooms = self.rooms.lock().await;
-    let room = rooms.entry(id).or_insert_with(|| {
-      Arc::new(Room {
+    let room_arc = rooms.entry(id).or_insert_with(|| {
+      Arc::new(Mutex::new(Room {
         id,
         players,
+        game_state: None,
         nats_task,
         nats_notify,
         nats_sender,
         nats_update_subject,
-      })
+      }))
     });
+    let room = room_arc.lock().await;
+
+    room
+      .send_msg_to_all(GameMessage::PlayerJoined(PlayerInfo {
+        id: player,
+        name: name.clone(),
+      }))
+      .await;
 
     let (sender, receiver) = channel(100);
     let mut players = room.players.lock().await;
@@ -133,30 +163,48 @@ impl GameState {
       },
     );
     let _ = sender.send(room.room_info(db).await?).await;
+    if let Some(game_state) = &room.game_state {
+      let _ = sender.send(game_state.game_info()).await;
+    }
 
-    Ok((receiver, room.clone()))
+    Ok((receiver, room_arc.clone()))
   }
 
   pub async fn leave_room(&self, id: Uuid, player: Uuid) {
     let mut rooms = self.rooms.lock().await;
     if let Some(room) = rooms.get(&id) {
+      let room = room.lock().await;
       let mut players = room.players.lock().await;
       players.remove(&player);
       if players.is_empty() {
         drop(players);
+        drop(room);
         let Some(room) = rooms.remove(&id) else {
           log::warn!("Failed to remove room");
           return;
         };
+        let room = room.lock().await;
         room.nats_notify.notify_one();
         room.nats_task.abort();
+      } else {
+        room
+          .send_msg_to_all(GameMessage::PlayerLeft(PlayerInfo {
+            id: player,
+            name: "".to_string(), // Name is not needed here
+          }))
+          .await;
       }
     }
   }
 }
 
 impl Room {
-  pub async fn handle_cmd(&self, player: Uuid, cmd_json: String, db: &Tables<'_>) -> Result<()> {
+  pub async fn handle_cmd(
+    &mut self,
+    player: Uuid,
+    cmd_json: String,
+    db: &Tables<'_>,
+  ) -> Result<()> {
     let cmd: GameCommand = match serde_json::from_str(&cmd_json) {
       Ok(cmd) => cmd,
       Err(_) => {
@@ -170,18 +218,128 @@ impl Room {
       }
     };
 
-    if let GameCommand::RoomInfo = cmd {
-      self
-        .send_msg_to_current_player(player, self.room_info(db).await?)
-        .await;
+    match cmd {
+      GameCommand::RoomInfo => {
+        self
+          .send_msg_to_current_player(player, self.room_info(db).await?)
+          .await;
+      }
+      GameCommand::GameInfo => {
+        if let Some(game_state) = &self.game_state {
+          self
+            .send_msg_to_current_player(player, game_state.game_info())
+            .await;
+        } else {
+          self
+            .send_msg_to_current_player(
+              player,
+              GameMessage::InvalidCommand(InvalidCommand {
+                message: "Game not started".to_string(),
+              }),
+            )
+            .await;
+        }
+      }
+      GameCommand::StartGame => {
+        if self.game_state.is_some() {
+          self
+            .send_msg_to_current_player(
+              player,
+              GameMessage::InvalidCommand(InvalidCommand {
+                message: "Game already started".to_string(),
+              }),
+            )
+            .await;
+          return Ok(());
+        }
+
+        let players = self.players.lock().await;
+        if players.len() < 2 {
+          self
+            .send_msg_to_current_player(
+              player,
+              GameMessage::InvalidCommand(InvalidCommand {
+                message: "Not enough players to start the game".to_string(),
+              }),
+            )
+            .await;
+          return Ok(());
+        }
+
+        // Check if the player is the owner
+        let room = db.room().get(self.id).await?;
+        if room.owner != player {
+          self
+            .send_msg_to_current_player(
+              player,
+              GameMessage::InvalidCommand(InvalidCommand {
+                message: "Only the room owner can start the game".to_string(),
+              }),
+            )
+            .await;
+          return Ok(());
+        }
+
+        // Initialize game state here
+        let state = GameState::init(
+          players.keys().copied().collect::<Vec<_>>(),
+          room.small_blind,
+          room.starting_cash,
+        );
+
+        self.send_msg_to_all(state.game_info()).await;
+
+        for player in &state.players {
+          self
+            .send_msg_to_player(
+              player.id,
+              GameMessage::YourCards(YourCards {
+                cards: player.cards,
+              }),
+            )
+            .await;
+        }
+
+        self
+          .send_msg_to_all(GameMessage::PlayerTurn(PlayerTurn {
+            id: state.current_player,
+          }))
+          .await;
+
+        self.game_state = Some(state);
+      }
+      cmd => {
+        if let Some(game_state) = &mut self.game_state {
+          if let Some(msg) = game_state.handle_cmd(cmd, player) {
+            self.send_msg_to_all(msg).await;
+          }
+        } else {
+          self
+            .send_msg_to_current_player(
+              player,
+              GameMessage::InvalidCommand(InvalidCommand {
+                message: "Game not started".to_string(),
+              }),
+            )
+            .await;
+          return Ok(());
+        }
+      }
     }
 
     Ok(())
   }
 
-  #[allow(unused)]
+  async fn send_msg_to_player(&self, player: Uuid, msg: GameMessage) {
+    self.send_msg(msg, Some(player)).await;
+  }
+
   async fn send_msg_to_all(&self, msg: GameMessage) {
-    let Ok(msg) = serde_json::to_vec(&msg) else {
+    self.send_msg(msg, None).await;
+  }
+
+  async fn send_msg(&self, msg: GameMessage, receiver: Option<Uuid>) {
+    let Ok(msg) = serde_json::to_vec(&NatsMessage { msg, receiver }) else {
       log::warn!("Failed to serialize message");
       return;
     };
