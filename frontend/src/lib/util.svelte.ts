@@ -37,6 +37,14 @@ export const get = async <T>(
   return await request(path, 'GET', res_type, undefined, undefined, signal);
 };
 
+export const del = async <T>(
+  path: string,
+  res_type: ResponseType,
+  signal?: AbortSignal
+): Promise<T | RequestError> => {
+  return await request(path, 'DELETE', res_type, undefined, undefined, signal);
+};
+
 const request = async <T>(
   path: string,
   method: string,
