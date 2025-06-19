@@ -10,7 +10,7 @@ use rocket_okapi::{
 };
 use rocket_ws::{Channel, Message, WebSocket, result::Error};
 use sea_orm_rocket::Connection;
-use state::GameState;
+use state::GlobalGameState;
 use uuid::Uuid;
 
 use crate::{
@@ -19,7 +19,9 @@ use crate::{
   error::Result,
 };
 
+mod card;
 mod commands;
+mod game_state;
 mod messages;
 pub mod state;
 
@@ -45,13 +47,15 @@ async fn game<'a>(
   auth: JwtClaims,
   ws: WebSocket,
   id: Uuid,
-  state: &'a State<GameState>,
+  state: &'a State<GlobalGameState>,
   conn: Connection<'a, DB>,
 ) -> Result<Channel<'a>> {
   log::info!("User {} connected to updater ws", auth.sub);
   let db = conn.into_inner();
   let user = db.tables().user().get_user(auth.sub).await?;
-  let (mut recv, room) = state.join_room(id, user.name, auth.sub).await;
+  let db = db.tables();
+
+  let (mut recv, room) = state.join_room(id, user.name, auth.sub, &db).await?;
 
   Ok(ws.channel(move |mut stream| {
     Box::pin(async move {
@@ -80,7 +84,9 @@ async fn game<'a>(
                 break;
               },
               Some(Ok(Message::Text(msg))) => {
-                room.handle_cmd(auth.sub, msg).await;
+                if let Err(err) = room.lock().await.handle_cmd(auth.sub, msg, &db).await {
+                  log::warn!("Error handling command: {}", err);
+                }
               },
               _ => (),
             }
