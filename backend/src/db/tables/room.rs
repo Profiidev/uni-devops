@@ -42,4 +42,11 @@ impl<'db> RoomTable<'db> {
       .all(self.db)
       .await
   }
+
+  pub async fn get(&self, id: Uuid) -> Result<room::Model, DbErr> {
+    room::Entity::find_by_id(id)
+      .one(self.db)
+      .await?
+      .ok_or(DbErr::RecordNotFound("Room not found".to_string()))
+  }
 }

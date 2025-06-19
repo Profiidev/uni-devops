@@ -20,23 +20,23 @@ impl<'db> Tables<'db> {
     Self { db }
   }
 
-  pub fn invalid_jwt(self) -> InvalidJwtTable<'db> {
+  pub fn invalid_jwt(&self) -> InvalidJwtTable<'db> {
     InvalidJwtTable::new(self.db)
   }
 
-  pub fn key(self) -> KeyTable<'db> {
+  pub fn key(&self) -> KeyTable<'db> {
     KeyTable::new(self.db)
   }
 
-  pub fn user(self) -> UserTable<'db> {
+  pub fn user(&self) -> UserTable<'db> {
     UserTable::new(self.db)
   }
 
-  pub fn player(self) -> PlayerTable<'db> {
+  pub fn player(&self) -> PlayerTable<'db> {
     PlayerTable::new(self.db)
   }
 
-  pub fn room(self) -> RoomTable<'db> {
+  pub fn room(&self) -> RoomTable<'db> {
     RoomTable::new(self.db)
   }
 }

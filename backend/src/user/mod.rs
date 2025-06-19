@@ -3,7 +3,7 @@ use std::io::Cursor;
 use argon2::password_hash::SaltString;
 use base64::prelude::*;
 use image::{ImageFormat, imageops::FilterType};
-use rocket::{Route, State, delete, get, post, serde::json::Json};
+use rocket::{Route, State, delete, get, http::CookieJar, post, serde::json::Json};
 use rocket_okapi::{
   okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings,
 };
@@ -14,7 +14,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-  auth::{jwt::JwtClaims, state::PasswordState, utils::hash_password},
+  auth::{
+    jwt::{JwtClaims, JwtState},
+    state::PasswordState,
+    utils::hash_password,
+  },
   db::{DB, DBTrait},
   error::{Error, Result},
 };
@@ -42,6 +46,8 @@ async fn register(
   req: Json<UserRegisterReq>,
   conn: Connection<'_, DB>,
   pw: &State<PasswordState>,
+  jwt: &State<JwtState>,
+  cookies: &CookieJar<'_>,
 ) -> Result<()> {
   let db = conn.into_inner();
 
@@ -66,7 +72,11 @@ async fn register(
     image: String::new(),
     salt,
   };
+  let uuid = user.id;
   db.tables().user().create_user(user).await?;
+
+  let cookie = jwt.create_token(uuid)?;
+  cookies.add(cookie);
 
   Ok(())
 }
