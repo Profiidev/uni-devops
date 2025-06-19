@@ -1,12 +1,22 @@
 <script lang="ts">
-  import { PUBLIC_BACKEND_URL } from '$env/static/public';
   import { onMount } from 'svelte';
   import '../app.css';
+  import { test_token } from '$lib/password.svelte';
+  import { browser } from '$app/environment';
+  import { page } from '$app/state';
+  import { goto } from '$app/navigation';
 
   let { children } = $props();
-  // example request
+
   onMount(() => {
-    fetch(`${PUBLIC_BACKEND_URL}/api`);
+    test_token().then((valid) => {
+      if (!valid && browser) {
+        let url = page.url.pathname;
+        if (url !== '/login') {
+          goto('/login');
+        }
+      }
+    });
   });
 </script>
 

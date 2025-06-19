@@ -1,2 +1,21 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
+
+:root {
+  --background-color: #1e1f20;
+  --surface-background: #000000;
+  --text-color: #ffffff;
+  --primary-color: #007bff;
+  --error: #ff4d4f;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  color: var(--text-color);
+}
+
+body {
+  background-color: var(--background-color);
+}
