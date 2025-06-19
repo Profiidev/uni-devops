@@ -1,10 +1,4 @@
-import {
-  ContentType,
-  ResponseType,
-  get,
-  post,
-  del
-} from '$lib/util.svelte';
+import { ContentType, ResponseType, get, post, del } from '$lib/util.svelte';
 
 export const create_Room = async () => {
   let result = await post<{ id: string }>(
@@ -33,8 +27,5 @@ export const list_Rooms = async () => {
 };
 
 export const delete_Room = async (id: string) => {
-  await del<undefined>(
-    `/game/room/${id}`,
-    ResponseType.None
-  );
+  await del<undefined>(`/game/room/${id}`, ResponseType.None);
 };
