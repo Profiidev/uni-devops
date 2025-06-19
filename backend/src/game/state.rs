@@ -15,6 +15,19 @@ impl Default for RoomState {
       .and_then(|v| v.parse::<i32>().ok())
       .unwrap_or(10);
 
+    assert!(
+      default_starting_cash > 0,
+      "Default starting cash must be positive"
+    );
+    assert!(
+      default_small_blind > 0,
+      "Default small blind must be positive"
+    );
+    assert!(
+      default_small_blind * 2 <= default_starting_cash,
+      " Default small blind must be less than or equal to half of the default starting cash"
+    );
+
     Self {
       default_starting_cash,
       default_small_blind,

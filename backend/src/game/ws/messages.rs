@@ -14,9 +14,10 @@ pub enum GameMessage {
   PlayerLeft(PlayerInfo),
   YourCards(YourCards),
   PlayerTurn(PlayerTurn),
-  CardRevealed(Card),
   PlayerActed(PlayerActed),
+  CardRevealed(Card),
   RoundEnded(RoundEnded),
+
   GameEnded(GameEnded),
   BackToLobby,
 }
@@ -79,6 +80,7 @@ pub struct GameInfo {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PlayerGameInfo {
   pub id: Uuid,
+  pub bet: i32,
   pub cash: i32,
   pub folded: bool,
 }

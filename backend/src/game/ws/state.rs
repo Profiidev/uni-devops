@@ -289,7 +289,7 @@ impl Room {
 
         self.send_msg_to_all(state.game_info()).await;
 
-        for player in &state.players {
+        for player in state.players.values() {
           self
             .send_msg_to_player(
               player.id,
@@ -308,9 +308,26 @@ impl Room {
 
         self.game_state = Some(state);
       }
+      GameCommand::NextRound => {
+        if let Some(game_state) = &mut self.game_state {
+          for msg in game_state.next_round() {
+            self.send_msg_to_all(msg).await;
+          }
+        } else {
+          self
+            .send_msg_to_current_player(
+              player,
+              GameMessage::InvalidCommand(InvalidCommand {
+                message: "Game not started".to_string(),
+              }),
+            )
+            .await;
+          return Ok(());
+        }
+      }
       cmd => {
         if let Some(game_state) = &mut self.game_state {
-          if let Some(msg) = game_state.handle_cmd(cmd, player) {
+          for msg in game_state.handle_cmd(cmd, player) {
             self.send_msg_to_all(msg).await;
           }
         } else {
