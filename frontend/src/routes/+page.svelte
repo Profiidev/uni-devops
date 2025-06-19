@@ -59,19 +59,29 @@
   const displayDate = (dateString: string) => {
     const date = new Date(dateString);
     let referenceDay = new Date();
-    let day = date.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: '2-digit' });
+    let day = date.toLocaleDateString([], {
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit'
+    });
     if (
       date.getFullYear() === referenceDay.getFullYear() &&
       date.getMonth() === referenceDay.getMonth() &&
       date.getDate() === referenceDay.getDate()
-    ) day = 'Today';
+    )
+      day = 'Today';
     referenceDay.setDate(referenceDay.getDate() - 1);
     if (
       date.getFullYear() === referenceDay.getFullYear() &&
       date.getMonth() === referenceDay.getMonth() &&
       date.getDate() === referenceDay.getDate()
-    ) day = 'Yesterday';
-    return day + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    )
+      day = 'Yesterday';
+    return (
+      day +
+      ' ' +
+      date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    );
   };
 </script>
 
@@ -89,7 +99,10 @@
           <p>Starting Cash: {room.starting_cash}</p>
           <p>Small Blind: {room.small_blind}</p>
           <div class="row">
-            <button class="primary-button" onclick={() => goto(`/game/${room.id}`)}>join</button>
+            <button
+              class="primary-button"
+              onclick={() => goto(`/game/${room.id}`)}>join</button
+            >
             <button onclick={() => deleteRoomClicked(room.id)}>delete</button>
           </div>
         </div>
