@@ -83,8 +83,8 @@ impl GlobalGameState {
     db: &Tables<'_>,
   ) -> Result<(Receiver<GameMessage>, Arc<Mutex<Room>>)> {
     let nats_url = self.nats_url.clone();
-    let nats_update_subject_ = format!("{}.{}", self.nats_update_subject, id);
-    let nats_update_subject = Subject::from(nats_update_subject_.as_str());
+    let nats_update_subject = Subject::from(format!("{}.{}", self.nats_update_subject, id));
+    let nats_update_subject_ = nats_update_subject.clone();
 
     let players: Players = Default::default();
     let players_ = players.clone();
@@ -162,6 +162,8 @@ impl GlobalGameState {
         sender: sender.clone(),
       },
     );
+    drop(players);
+
     let _ = sender.send(room.room_info(db).await?).await;
     if let Some(game_state) = &room.game_state {
       let _ = sender.send(game_state.game_info()).await;
