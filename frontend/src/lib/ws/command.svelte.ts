@@ -6,7 +6,8 @@ export type Command =
   | CallCommand
   | RaiseCommand
   | CheckCommand
-  | BackToLobbyCommand;
+  | BackToLobbyCommand
+  | NextRoundCommand;
 
 export enum CommandType {
   RoomInfo = 'RoomInfo',
@@ -16,6 +17,7 @@ export enum CommandType {
   Call = 'Call',
   Raise = 'Raise',
   Check = 'Check',
+  NextRound = 'NextRound',
   BackToLobby = 'BackToLobby'
 }
 
@@ -46,6 +48,10 @@ export type RaiseCommand = {
 
 export type CheckCommand = {
   type: CommandType.Check;
+};
+
+export type NextRoundCommand = {
+  type: CommandType.NextRound;
 };
 
 export type BackToLobbyCommand = {

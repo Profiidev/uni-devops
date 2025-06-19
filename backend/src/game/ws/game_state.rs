@@ -6,7 +6,7 @@ use crate::game::ws::{
   card::{Card, Hand},
   commands::{GameCommand, Raise},
   messages::{
-    GameInfo, GameMessage, InvalidCommand, PlayerActed, PlayerEndedInfo, PlayerGameInfo,
+    GameEnded, GameInfo, GameMessage, InvalidCommand, PlayerActed, PlayerEndedInfo, PlayerGameInfo,
     PlayerTurn, RoundEnded, YourCards,
   },
 };
@@ -22,6 +22,7 @@ pub struct GameState {
   pub small_blind_amount: i32,
   pub players_checked: usize,
   pub game_running: bool,
+  pub game_ended: bool,
 }
 
 pub struct PlayerState {
@@ -74,6 +75,7 @@ impl GameState {
       small_blind_amount,
       players_checked: 0,
       game_running: true,
+      game_ended: false,
     }
   }
 
@@ -167,6 +169,35 @@ impl GameState {
     msgs
   }
 
+  pub fn player_leaves(&mut self, player: Uuid) -> Vec<GameMessage> {
+    if !self.players.contains_key(&player) {
+      return vec![];
+    }
+
+    let mut msgs = Vec::new();
+
+    // Remove the player from the game
+    self.players.remove(&player);
+
+    if self.current_player == player {
+      // If the current player leaves, find the next player
+      self.current_player = *self
+        .players
+        .keys()
+        .cycle()
+        .skip_while(|&&p| p != self.current_player)
+        .skip(1)
+        .find(|&&p| !self.players.get(&p).unwrap().folded)
+        .unwrap();
+
+      msgs.push(GameMessage::PlayerTurn(PlayerTurn {
+        id: self.current_player,
+      }));
+    }
+
+    msgs
+  }
+
   pub fn handle_cmd(&mut self, cmd: GameCommand, player: Uuid) -> Vec<GameMessage> {
     if self.current_player != player {
       return vec![GameMessage::InvalidCommand(InvalidCommand {
@@ -177,7 +208,6 @@ impl GameState {
     let previous = self.players.get(&self.previous_player).unwrap().bet;
     let current = self.players.get_mut(&self.current_player).unwrap();
 
-    // TODO: player leaves and it is his turn + game ended logic + change cash and small blind
     let mut msgs = Vec::new();
     match cmd {
       GameCommand::Call => {
@@ -320,7 +350,7 @@ impl GameState {
       }
     }
 
-    vec![GameMessage::RoundEnded(RoundEnded {
+    let mut msgs = vec![GameMessage::RoundEnded(RoundEnded {
       players: winners
         .iter()
         .map(|&id| {
@@ -333,6 +363,17 @@ impl GameState {
           }
         })
         .collect(),
-    })]
+    })];
+
+    let non_broke_players: Vec<&PlayerState> =
+      self.players.values().filter(|p| p.cash > 0).collect();
+    if non_broke_players.len() == 1 {
+      // If only one player has cash left, they win the game
+      let winner = non_broke_players[0];
+      msgs.push(GameMessage::GameEnded(GameEnded { winner: winner.id }));
+      self.game_ended = true;
+    }
+
+    msgs
   }
 }

@@ -17,7 +17,6 @@ pub enum GameMessage {
   PlayerActed(PlayerActed),
   CardRevealed(Card),
   RoundEnded(RoundEnded),
-
   GameEnded(GameEnded),
   BackToLobby,
 }

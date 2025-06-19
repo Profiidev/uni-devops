@@ -173,7 +173,12 @@ impl GlobalGameState {
   pub async fn leave_room(&self, id: Uuid, player: Uuid) {
     let mut rooms = self.rooms.lock().await;
     if let Some(room) = rooms.get(&id) {
-      let room = room.lock().await;
+      let mut room = room.lock().await;
+      if let Some(game_state) = &mut room.game_state {
+        for msg in game_state.player_leaves(player) {
+          room.send_msg_to_all(msg).await;
+        }
+      }
       let mut players = room.players.lock().await;
       players.remove(&player);
       if players.is_empty() {
@@ -229,6 +234,36 @@ impl Room {
           self
             .send_msg_to_current_player(player, game_state.game_info())
             .await;
+        } else {
+          self
+            .send_msg_to_current_player(
+              player,
+              GameMessage::InvalidCommand(InvalidCommand {
+                message: "Game not started".to_string(),
+              }),
+            )
+            .await;
+        }
+      }
+      GameCommand::BackToLobby => {
+        if let Some(game_state) = &self.game_state {
+          let room = db.room().get(self.id).await?;
+          if room.owner != player || !game_state.game_ended {
+            self
+              .send_msg_to_current_player(
+                player,
+                GameMessage::InvalidCommand(InvalidCommand {
+                  message: "Only the room owner can end the game".to_string(),
+                }),
+              )
+              .await;
+            return Ok(());
+          }
+          // Reset game state
+          self.game_state = None;
+
+          // Notify players
+          self.send_msg_to_all(GameMessage::BackToLobby).await;
         } else {
           self
             .send_msg_to_current_player(
