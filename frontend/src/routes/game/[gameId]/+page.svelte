@@ -1,6 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { connectWebSocket, closeWebSocket, sendWebSocketMessage } from '$lib/websocket.svelte';
+  import {
+    connectWebSocket,
+    closeWebSocket,
+    sendWebSocketMessage
+  } from '$lib/websocket.svelte';
 
   export let data;
   const { gameId } = data;
