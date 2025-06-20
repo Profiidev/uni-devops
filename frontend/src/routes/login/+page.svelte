@@ -16,7 +16,7 @@
     } else {
       console.log('There was an Error while signing up:', res);
       error =
-        'Es gab einen Fehler bei der Registrierung. Bitte überprüfe deine Eingaben.';
+        'There was an error during registration. Please check your input.'
     }
   };
 
@@ -28,7 +28,7 @@
     } else {
       console.log('There was an Error while signing in:', res);
       error =
-        'Es gab einen Fehler beim Anmelden. Bitte überprüfe deine Eingaben.';
+        'There was an error during login. Please check your input.';
     }
   };
 </script>

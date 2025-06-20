@@ -33,6 +33,10 @@ export type RoomInfo = {
   type: MessageType.RoomInfo;
   id: string; // uuid
   players: PlayerInfo[];
+  owner: string; // uuid
+  startingCash: number;
+  smallBlind: number;
+  gameRunning: boolean;
 };
 
 export type PlayerInfo = {

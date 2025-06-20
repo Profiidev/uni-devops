@@ -1,6 +1,6 @@
 <script lang="ts">
   import { create_Room, delete_Room, list_Rooms } from '$lib/room.svelte';
-  import { user_info } from '$lib/user.svlte';
+  import { user_info } from '$lib/user.svelte';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
 
