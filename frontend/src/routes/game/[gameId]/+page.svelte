@@ -5,8 +5,13 @@
     closeWebSocket,
     sendWebSocketMessage
   } from '$lib/websocket.svelte';
-  import { MessageType, type RoomInfo, type PlayerInfo } from '$lib/ws/message.svelte.js';
+  import {
+    MessageType,
+    type RoomInfo,
+    type PlayerInfo
+  } from '$lib/ws/message.svelte.js';
   import { user_info } from '$lib/user.svelte.js';
+  import { CommandType} from '$lib/ws/command.svelte.js';
 
   const { data } = $props();
   const { gameId } = data;
@@ -23,18 +28,7 @@
     smallBlind: 0,
     created_at: new Date().toISOString()
   });
-  let ownId: string | undefined;
-
-  onMount(() => {
-    user_info().then((id) => {
-      ownId = typeof id === 'string' ? id : undefined;
-    });
-    connectWebSocket(gameId, handleIncoming);
-
-    return () => {
-      closeWebSocket();
-    };
-  });
+  let ownPlayerInfo = $state<PlayerInfo | undefined>(undefined);
 
   function handleIncoming(data: any) {
     // messages = [...messages, JSON.stringify(data)];
@@ -52,7 +46,10 @@
         break;
       case 'PlayerJoined':
         if (!roomInfo.players.some((p) => p.id === data.id)) {
-          roomInfo.players = [...(roomInfo.players || []), { id: data.id, name: data.name }];
+          roomInfo.players = [
+            ...(roomInfo.players || []),
+            { id: data.id, name: data.name }
+          ];
         }
         break;
       case 'PlayerLeft':
@@ -72,27 +69,33 @@
   }
 
   onMount(() => {
+    user_info().then((playerInfo) => {
+      if (playerInfo !== null) {
+        ownPlayerInfo = playerInfo as PlayerInfo;
+        console.log('Own ID:', ownPlayerInfo.id);
+      }
+    });
     connectWebSocket(gameId, handleIncoming);
 
     return () => {
       closeWebSocket();
     };
   });
-
-  function sendMessage() {
-    sendWebSocketMessage({ text: 'Hello from Svelte!' });
-  }
 </script>
 
 <h1>Game ID: {gameId}</h1>
-
-<button onclick={sendMessage}>Send Message</button>
 
 <h2>Player:</h2>
 {#if !roomInfo.gameRunning}
   <p>
     {roomInfo.players.map((p) => p.name).join(', ')}
   </p>
+{/if}
+
+{#if !roomInfo.gameRunning && roomInfo.owner === ownPlayerInfo?.id}
+  <button onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}>
+    Start Game
+  </button>
 {/if}
 
 <ul>
