@@ -16,7 +16,7 @@
     } else {
       console.log('There was an Error while signing up:', res);
       error =
-        'There was an error during registration. Please check your input.'
+        'There was an error during registration. Please check your input.';
     }
   };
 
@@ -27,8 +27,7 @@
       goto('/');
     } else {
       console.log('There was an Error while signing in:', res);
-      error =
-        'There was an error during login. Please check your input.';
+      error = 'There was an error during login. Please check your input.';
     }
   };
 </script>

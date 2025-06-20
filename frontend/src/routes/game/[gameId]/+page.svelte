@@ -5,7 +5,11 @@
     closeWebSocket,
     sendWebSocketMessage
   } from '$lib/websocket.svelte';
-  import { MessageType, type RoomInfo, type PlayerInfo } from '$lib/ws/message.svelte.js';
+  import {
+    MessageType,
+    type RoomInfo,
+    type PlayerInfo
+  } from '$lib/ws/message.svelte.js';
   import { user_info } from '$lib/user.svelte.js';
 
   const { data } = $props();
@@ -52,7 +56,10 @@
         break;
       case 'PlayerJoined':
         if (!roomInfo.players.some((p) => p.id === data.id)) {
-          roomInfo.players = [...(roomInfo.players || []), { id: data.id, name: data.name }];
+          roomInfo.players = [
+            ...(roomInfo.players || []),
+            { id: data.id, name: data.name }
+          ];
         }
         break;
       case 'PlayerLeft':
