@@ -11,7 +11,7 @@
     type PlayerInfo
   } from '$lib/ws/message.svelte.js';
   import { user_info } from '$lib/user.svelte.js';
-  import { CommandType} from '$lib/ws/command.svelte.js';
+  import { CommandType } from '$lib/ws/command.svelte.js';
 
   const { data } = $props();
   const { gameId } = data;
