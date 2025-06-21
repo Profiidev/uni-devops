@@ -11,7 +11,8 @@ export type Message =
   | PlayerActed
   | RoundEnded
   | GameEnded
-  | BackToLobby;
+  | BackToLobby
+  | Heartbeat;
 
 export enum MessageType {
   InvalidCommand = 'InvalidCommand',
@@ -26,7 +27,8 @@ export enum MessageType {
   PlayerActed = 'PlayerActed',
   RoundEnded = 'RoundEnded',
   GameEnded = 'GameEnded',
-  BackToLobby = 'BackToLobby'
+  BackToLobby = 'BackToLobby',
+  Heartbeat = 'Heartbeat'
 }
 
 export type RoomInfo = {
@@ -130,6 +132,10 @@ export type GameEnded = {
 
 export type BackToLobby = {
   type: MessageType.BackToLobby;
+};
+
+export type Heartbeat = {
+  type: MessageType.Heartbeat;
 };
 
 export type Card = {

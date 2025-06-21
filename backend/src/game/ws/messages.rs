@@ -19,6 +19,7 @@ pub enum GameMessage {
   RoundEnded(RoundEnded),
   GameEnded(GameEnded),
   BackToLobby,
+  Heartbeat,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
