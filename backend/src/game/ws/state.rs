@@ -292,6 +292,7 @@ impl Room {
 
         let players = self.players.lock().await;
         if players.len() < 2 {
+          drop(players);
           self
             .send_msg_to_current_player(
               player,
@@ -306,6 +307,7 @@ impl Room {
         // Check if the player is the owner
         let room = db.room().get(self.id).await?;
         if room.owner != player {
+          drop(players);
           self
             .send_msg_to_current_player(
               player,
@@ -324,6 +326,7 @@ impl Room {
           room.starting_cash,
         );
 
+        drop(players);
         self.send_msg_to_all(state.game_info()).await;
 
         for player in state.players.values() {
