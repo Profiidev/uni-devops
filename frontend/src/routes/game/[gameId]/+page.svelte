@@ -12,16 +12,15 @@
     type GameInfo,
     type Card,
     type RoundEnded,
-    type PlayerGameInfo
-  } from '$lib/ws/message.svelte.js';
-  import { user_info } from '$lib/user.svelte.js';
+    type PlayerGameInfo,
+    type Message
+  } from '$lib/ws/message.svelte';
+  import { userInfo } from '$lib/user.svelte.js';
   import { CommandType } from '$lib/ws/command.svelte.js';
   import Player from './player.svelte';
 
   const { data } = $props();
   const { gameId } = data;
-
-  // let messages: string[] = [];
 
   let roomInfo: RoomInfo = $state({
     type: MessageType.RoomInfo,
@@ -30,8 +29,7 @@
     owner: '',
     game_running: false,
     starting_cash: 0,
-    small_blind: 0,
-    created_at: new Date().toISOString()
+    small_blind: 0
   });
   let ownPlayerInfo: PlayerInfo | undefined = $state();
   let gameInfo: GameInfo | undefined = $state();
@@ -56,27 +54,25 @@
   let callAmount: number = 0;
   let roundEnded: RoundEnded | undefined = $state();
 
-  function handleIncoming(data: any) {
-    // messages = [...messages, JSON.stringify(data)];
+  function handleIncoming(data: Message) {
     console.log('Received data:', data);
 
     switch (data.type) {
-      case 'RoomInfo':
+      case MessageType.RoomInfo:
         roomInfo = data;
         callAmount = data.small_blind * 2;
-        console.log(data.small_blind, callAmount);
         break;
-      case 'InvalidCommand':
+      case MessageType.InvalidCommand:
         console.error('Invalid command received:', data);
         break;
-      case 'GameInfo':
+      case MessageType.GameInfo:
         gameInfo = data;
         roomInfo.game_running = true;
         break;
-      case 'GameStarted':
+      case MessageType.GameStarted:
         roomInfo.game_running = true;
         break;
-      case 'PlayerJoined':
+      case MessageType.PlayerJoined:
         if (!roomInfo.players.some((p) => p.id === data.id)) {
           roomInfo.players = [
             ...(roomInfo.players || []),
@@ -84,26 +80,25 @@
           ];
         }
         break;
-      case 'PlayerLeft':
+      case MessageType.PlayerLeft:
         roomInfo.players = roomInfo.players.filter(
           (p: PlayerInfo) => p.id !== data.id
         );
         break;
-      case 'PlayerTurn':
+      case MessageType.PlayerTurn:
         if (gameInfo) gameInfo.current_player = data.id;
         else sendWebSocketMessage({ type: CommandType.GameInfo });
         break;
-      case 'YourCards':
+      case MessageType.YourCards:
         ownCards = data.cards;
         break;
-      case 'CardRevealed':
+      case MessageType.CardRevealed:
         revealedCards = [
           ...revealedCards,
           { rank: data.rank, suit: data.suit }
         ];
-        console.log('Revealed cards:', revealedCards);
         break;
-      case 'PlayerActed':
+      case MessageType.PlayerActed:
         switch (data.action.type) {
           case 'Fold':
             if (gameInfo) {
@@ -114,12 +109,6 @@
             if (gameInfo) {
               const player = gameInfo.players.find((p) => p.id === data.id);
               if (player) {
-                console.log(
-                  callAmount,
-                  player.bet,
-                  player.cash,
-                  callAmount - player.bet
-                );
                 const difference = Math.min(
                   callAmount - player.bet,
                   player.cash
@@ -147,7 +136,7 @@
   }
 
   onMount(() => {
-    user_info().then((playerInfo) => {
+    userInfo().then((playerInfo) => {
       if (playerInfo !== null) {
         ownPlayerInfo = playerInfo as PlayerInfo;
         console.log('Own ID:', ownPlayerInfo.id);

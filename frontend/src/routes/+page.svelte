@@ -1,6 +1,6 @@
 <script lang="ts">
   import { create_Room, delete_Room, list_Rooms } from '$lib/room.svelte';
-  import { user_info } from '$lib/user.svelte';
+  import { userInfo } from '$lib/user.svelte';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
 
@@ -48,7 +48,7 @@
   };
 
   const getUserInfo = async () => {
-    user = ((await user_info()) as User) ?? null;
+    user = ((await userInfo()) as User) ?? null;
   };
 
   onMount(() => {

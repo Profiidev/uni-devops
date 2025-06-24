@@ -69,7 +69,7 @@ export type PlayerGameInfo = {
 
 export type GameStarted = {
   type: MessageType.GameStarted;
-} & GameInfo;
+};
 
 export type PlayerJoined = {
   type: MessageType.PlayerJoined;
