@@ -47,8 +47,11 @@
   let ownCards: Card[] = $state([]);
   let raiseAmount: number = $state(0);
   let revealedCards: Card[] = $state([]);
-  let paddedCards = $derived(() => 
-    Array.from({ length: 5 }, (_, i) => revealedCards[i] || { rank: '?', suit: '?' })
+  let paddedCards = $derived(() =>
+    Array.from(
+      { length: 5 },
+      (_, i) => revealedCards[i] || { rank: '?', suit: '?' }
+    )
   );
   let callAmount: number = 0;
   let roundEnded: RoundEnded | undefined = $state();

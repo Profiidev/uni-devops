@@ -1,8 +1,5 @@
 <script lang="ts">
-  import type {
-    Card,
-    PlayerGameInfo
-  } from '$lib/ws/message.svelte';
+  import type { Card, PlayerGameInfo } from '$lib/ws/message.svelte';
 
   export let name: String;
   export let playerGameInfo: PlayerGameInfo;
