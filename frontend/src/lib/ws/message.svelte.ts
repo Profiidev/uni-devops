@@ -36,9 +36,9 @@ export type RoomInfo = {
   id: string; // uuid
   players: PlayerInfo[];
   owner: string; // uuid
-  startingCash: number;
-  smallBlind: number;
-  gameRunning: boolean;
+  starting_cash: number;
+  small_blind: number;
+  game_running: boolean;
 };
 
 export type PlayerInfo = {
@@ -55,13 +55,15 @@ export type GameInfo = {
   type: MessageType.GameInfo;
   pot: number;
   players: PlayerGameInfo[];
-  currentPlayer: string; // uuid
-  smallBlind: string; // uuid
+  current_player: string; // uuid
+  small_blind: string; // uuid
+  revealed_cards: Card[];
 };
 
 export type PlayerGameInfo = {
   id: string; // uuid
   cash: number;
+  bet: number;
   folded: boolean;
 };
 
