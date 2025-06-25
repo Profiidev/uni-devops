@@ -9,11 +9,11 @@
     MessageType,
     type RoomInfo,
     type PlayerInfo,
-    type GameInfo,
     type Card,
     type RoundEnded,
     type PlayerGameInfo,
-    type Message
+    type Message,
+    type GameState
   } from '$lib/ws/message.svelte';
   import { userInfo } from '$lib/user.svelte.js';
   import { CommandType } from '$lib/ws/command.svelte.js';
@@ -32,12 +32,12 @@
     small_blind: 0
   });
   let ownPlayerInfo: PlayerInfo | undefined = $state();
-  let gameInfo: GameInfo | undefined = $state();
+  let gameState: GameState | undefined = $state();
   let ownPlayer: () => PlayerGameInfo | undefined = $derived(() => {
-    return gameInfo?.players.find((p) => p.id === ownPlayerInfo!.id);
+    return gameState?.players.find((p) => p.id === ownPlayerInfo!.id);
   });
   let enemyPlayer: () => PlayerGameInfo[] | undefined = $derived(() => {
-    const ps = gameInfo?.players || [];
+    const ps = gameState?.players || [];
     const index = ps.findIndex((p) => p.id === ownPlayerInfo!.id);
     if (index === -1) return undefined;
     return [...ps.slice(index + 1), ...ps.slice(0, index)];
@@ -66,10 +66,11 @@
         console.error('Invalid command received:', data);
         break;
       case MessageType.GameInfo:
-        gameInfo = data;
+        gameState = data;
         roomInfo.game_running = true;
         break;
       case MessageType.GameStarted:
+        gameState = data;
         roomInfo.game_running = true;
         break;
       case MessageType.PlayerJoined:
@@ -86,7 +87,7 @@
         );
         break;
       case MessageType.PlayerTurn:
-        if (gameInfo) gameInfo.current_player = data.id;
+        if (gameState) gameState.current_player = data.id;
         else sendWebSocketMessage({ type: CommandType.GameInfo });
         break;
       case MessageType.YourCards:
@@ -101,13 +102,13 @@
       case MessageType.PlayerActed:
         switch (data.action.type) {
           case 'Fold':
-            if (gameInfo) {
-              gameInfo.players.find((p) => p.id === data.id)!.folded = true;
+            if (gameState) {
+              gameState.players.find((p) => p.id === data.id)!.folded = true;
             }
             break;
           case 'Call':
-            if (gameInfo) {
-              const player = gameInfo.players.find((p) => p.id === data.id);
+            if (gameState) {
+              const player = gameState.players.find((p) => p.id === data.id);
               if (player) {
                 const difference = Math.min(
                   callAmount - player.bet,
@@ -121,8 +122,8 @@
           case 'Check':
             break;
           case 'Raise':
-            if (gameInfo) {
-              const player = gameInfo.players.find((p) => p.id === data.id);
+            if (gameState) {
+              const player = gameState.players.find((p) => p.id === data.id);
               if (player) {
                 callAmount += data.action.amount;
                 const difference = Math.min(
@@ -166,7 +167,7 @@
       Start Game
     </button>
   {/if}
-{:else if gameInfo}
+{:else if gameState}
   <div class="enemyPlayerContainer">
     {#if enemyPlayer !== undefined}
       {#each enemyPlayer()! as player}
@@ -175,7 +176,7 @@
             'Unknown Player'}
           playerGameInfo={player}
           cards={[undefined, undefined]}
-          turn={gameInfo.current_player === player.id}
+          turn={gameState.current_player === player.id}
         />
       {/each}
     {/if}
@@ -197,7 +198,7 @@
         name={ownPlayerInfo?.name || 'You'}
         playerGameInfo={ownPlayer()!}
         cards={ownCards}
-        turn={gameInfo.current_player === ownPlayerInfo?.id}
+        turn={gameState.current_player === ownPlayerInfo?.id}
       />
     {/if}
   </div>

@@ -51,14 +51,17 @@ export type InvalidCommand = {
   message: string;
 };
 
-export type GameInfo = {
-  type: MessageType.GameInfo;
+export type GameState = {
   pot: number;
   players: PlayerGameInfo[];
   current_player: string; // uuid
   small_blind: string; // uuid
   revealed_cards: Card[];
 };
+
+export type GameInfo = {
+  type: MessageType.GameInfo;
+} & GameState;
 
 export type PlayerGameInfo = {
   id: string; // uuid
@@ -69,7 +72,7 @@ export type PlayerGameInfo = {
 
 export type GameStarted = {
   type: MessageType.GameStarted;
-};
+} & GameState;
 
 export type PlayerJoined = {
   type: MessageType.PlayerJoined;
