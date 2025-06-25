@@ -245,19 +245,20 @@ impl GameState {
         }
       }
       GameCommand::Raise(Raise { amount }) => {
-        if amount + current.bet <= previous {
+        let call_diff = previous - current.bet;
+        if amount <= 0 {
           return vec![GameMessage::InvalidCommand(InvalidCommand {
-            message: "Raise amount must be greater than the previous bet".to_string(),
+            message: "Raise amount must be greater than 0".to_string(),
           })];
         }
-        if amount > current.cash {
+        if amount + call_diff > current.cash {
           return vec![GameMessage::InvalidCommand(InvalidCommand {
             message: "You don't have enough cash to raise".to_string(),
           })];
         }
-        current.cash -= amount;
-        current.bet += amount;
-        self.pot += amount;
+        current.cash -= amount + call_diff;
+        current.bet += amount + call_diff;
+        self.pot += amount + call_diff;
         self.previous_player = self.current_player;
         self.players_checked = 0;
       }

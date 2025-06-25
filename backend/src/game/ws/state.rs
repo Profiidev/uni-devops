@@ -368,7 +368,11 @@ impl Room {
       cmd => {
         if let Some(game_state) = &mut self.game_state {
           for msg in game_state.handle_cmd(cmd, player) {
-            self.send_msg_to_all(msg).await;
+            if let GameMessage::InvalidCommand(_) = &msg {
+              self.send_msg_to_current_player(player, msg).await;
+            } else {
+              self.send_msg_to_all(msg).await;
+            }
           }
         } else {
           self
