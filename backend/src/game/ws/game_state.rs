@@ -247,7 +247,7 @@ impl GameState {
       GameCommand::Fold => {
         current.folded = true;
         if self.players.iter().filter(|(_, p)| !p.folded).count() == 1 {
-          self.end_game();
+          msgs.extend(self.end_game());
         }
       }
       GameCommand::Raise(Raise { amount }) => {
@@ -327,52 +327,67 @@ impl GameState {
 
   fn end_game(&mut self) -> Vec<GameMessage> {
     self.game_running = false;
-    let community: [Card; 5] = self
-      .revealed_cards
-      .clone()
-      .try_into()
-      .expect("Should never fail");
 
     let remaining_players: Vec<_> = self.players.values().filter(|p| !p.folded).collect();
-    let hands = remaining_players
-      .iter()
-      .map(|p| (p.id, Hand::from_cards(p.cards, community)))
-      .collect::<HashMap<_, _>>();
+    let mut msgs = if remaining_players.len() != 1 {
+      let community: [Card; 5] = self
+        .revealed_cards
+        .clone()
+        .try_into()
+        .expect("Should never fail");
 
-    let mut best_hand = None;
-    let mut winners = Vec::new();
-    for (id, hand) in &hands {
-      if best_hand.is_none() || hand > best_hand.as_ref().unwrap() {
-        best_hand = Some(hand.clone());
-        winners.clear();
-        winners.push(*id);
-      } else if hand == best_hand.as_ref().unwrap() {
-        winners.push(*id);
-      }
-    }
-
-    let pot = self.pot / winners.len() as i32;
-
-    for player in self.players.values_mut() {
-      if winners.contains(&player.id) {
-        player.cash += pot;
-      }
-    }
-
-    let mut msgs = vec![GameMessage::RoundEnded(RoundEnded {
-      players: winners
+      let hands = remaining_players
         .iter()
-        .map(|&id| {
-          let player = self.players.get(&id).unwrap();
-          PlayerEndedInfo {
-            id,
-            cards: Some(player.cards),
-            best_hand: hands.get(&id).cloned(),
-            winnings: pot,
-          }
-        })
-        .collect(),
-    })];
+        .map(|p| (p.id, Hand::from_cards(p.cards, community)))
+        .collect::<HashMap<_, _>>();
+
+      let mut best_hand = None;
+      let mut winners = Vec::new();
+      for (id, hand) in &hands {
+        if best_hand.is_none() || hand > best_hand.as_ref().unwrap() {
+          best_hand = Some(hand.clone());
+          winners.clear();
+          winners.push(*id);
+        } else if hand == best_hand.as_ref().unwrap() {
+          winners.push(*id);
+        }
+      }
+
+      let pot = self.pot / winners.len() as i32;
+
+      for player in self.players.values_mut() {
+        if winners.contains(&player.id) {
+          player.cash += pot;
+        }
+      }
+
+      vec![GameMessage::RoundEnded(RoundEnded {
+        players: hands
+          .iter()
+          .map(|(&id, hand)| {
+            let player = self.players.get(&id).unwrap();
+            PlayerEndedInfo {
+              id,
+              cards: Some(player.cards),
+              best_hand: Some(hand.clone()),
+              winnings: if winners.contains(&id) { pot } else { 0 },
+            }
+          })
+          .collect(),
+      })]
+    } else {
+      vec![GameMessage::RoundEnded(RoundEnded {
+        players: remaining_players
+          .iter()
+          .map(|p| PlayerEndedInfo {
+            id: p.id,
+            cards: Some(p.cards),
+            best_hand: None,
+            winnings: self.pot,
+          })
+          .collect(),
+      })]
+    };
 
     let non_broke_players: Vec<&PlayerState> =
       self.players.values().filter(|p| p.cash > 0).collect();
