@@ -125,8 +125,12 @@
               const player = gameInfo.players.find((p) => p.id === data.id);
               if (player) {
                 callAmount += data.action.amount;
-                player.bet += data.action.amount;
-                player.cash -= data.action.amount;
+                const difference = Math.min(
+                  callAmount - player.bet,
+                  player.cash
+                );
+                player.bet += difference;
+                player.cash -= difference;
               }
             }
             break;
