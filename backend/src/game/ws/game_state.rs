@@ -199,6 +199,12 @@ impl GameState {
   }
 
   pub fn handle_cmd(&mut self, cmd: GameCommand, player: Uuid) -> Vec<GameMessage> {
+    if !self.game_running || self.game_ended {
+      return vec![GameMessage::InvalidCommand(InvalidCommand {
+        message: "Game is not running".to_string(),
+      })];
+    }
+
     if self.current_player != player {
       return vec![GameMessage::InvalidCommand(InvalidCommand {
         message: "It's not your turn".to_string(),
@@ -224,8 +230,8 @@ impl GameState {
         current.cash -= previous - current.bet;
         current.bet = previous;
         self.pot += previous - current.bet;
-        msgs.extend(self.check_next_round());
         self.players_checked += 1;
+        msgs.extend(self.check_next_round());
         self.previous_player = self.current_player;
       }
       GameCommand::Check => {
@@ -234,8 +240,8 @@ impl GameState {
             message: "You must call or raise".to_string(),
           })];
         }
-        msgs.extend(self.check_next_round());
         self.players_checked += 1;
+        msgs.extend(self.check_next_round());
         self.previous_player = self.current_player;
       }
       GameCommand::Fold => {
@@ -279,9 +285,11 @@ impl GameState {
       .find(|&&p| !self.players.get(&p).unwrap().folded)
       .unwrap();
 
-    msgs.push(GameMessage::PlayerTurn(PlayerTurn {
-      id: self.current_player,
-    }));
+    if !self.game_ended && self.game_running {
+      msgs.push(GameMessage::PlayerTurn(PlayerTurn {
+        id: self.current_player,
+      }));
+    }
 
     msgs
   }
