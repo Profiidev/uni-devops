@@ -140,6 +140,7 @@ impl Hand {
 
     // Sort the cards by rank
     all_cards.sort_by(|a, b| a.rank.cmp(&b.rank));
+    all_cards.reverse(); // Highest rank first
     // get count of each rank
     let mut rank_count = HashMap::new();
     for card in &all_cards {

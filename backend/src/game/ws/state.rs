@@ -333,7 +333,7 @@ impl Room {
           .send_msg_to_all(GameMessage::GameStarted(state.game_info()))
           .await;
 
-        for player in state.players.values() {
+        for player in state.players.iter() {
           self
             .send_msg_to_player(
               player.id,

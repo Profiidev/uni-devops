@@ -17,7 +17,7 @@ pub struct GameState {
   pub small_blind: Uuid,
   pub revealed_cards: Vec<Card>,
   pub pot: i32,
-  pub players: HashMap<Uuid, PlayerState>,
+  pub players: Vec<PlayerState>,
   pub deck: Vec<Card>,
   pub small_blind_amount: i32,
   pub players_checked: usize,
@@ -39,7 +39,7 @@ impl GameState {
     let big_blind = players[1];
     let current_player = *players.iter().cycle().nth(2).unwrap();
 
-    let mut player_states = HashMap::new();
+    let mut player_states = Vec::new();
     let mut deck = Card::deck();
 
     for player in players {
@@ -52,16 +52,13 @@ impl GameState {
       };
       let bet = starting_cash - cash;
 
-      player_states.insert(
-        player,
-        PlayerState {
-          id: player,
-          bet,
-          cash,
-          folded: false,
-          cards: [deck.pop().unwrap(), deck.pop().unwrap()],
-        },
-      );
+      player_states.push(PlayerState {
+        id: player,
+        bet,
+        cash,
+        folded: false,
+        cards: [deck.pop().unwrap(), deck.pop().unwrap()],
+      });
     }
 
     GameState {
@@ -87,7 +84,7 @@ impl GameState {
       pot: self.pot,
       players: self
         .players
-        .values()
+        .iter()
         .map(|p| PlayerGameInfo {
           id: p.id,
           bet: p.bet,
@@ -109,12 +106,12 @@ impl GameState {
     // Remove players with no cash left to continue
     self
       .players
-      .retain(|_, player| player.cash > self.small_blind_amount * 2);
+      .retain(|player| player.cash > self.small_blind_amount * 2);
 
     let mut msgs = Vec::new();
 
     // Reset players' bets for the next round
-    for player in self.players.values_mut() {
+    for player in self.players.iter_mut() {
       player.bet = 0;
       if active_players.contains(&player.id) {
         player.folded = false;
@@ -137,11 +134,11 @@ impl GameState {
 
     let mut players_after_small_blind = self
       .players
-      .keys()
-      .copied()
+      .iter()
       .cycle()
-      .skip_while(|&p| p != self.small_blind)
-      .skip(1);
+      .skip_while(|&p| p.id != self.small_blind)
+      .skip(1)
+      .map(|p| p.id);
 
     let small_blind = players_after_small_blind.next().unwrap();
     let big_blind = players_after_small_blind.next().unwrap();
@@ -150,7 +147,7 @@ impl GameState {
     self.small_blind = small_blind;
 
     // Deal new cards to players
-    for player in self.players.values_mut() {
+    for player in self.players.iter_mut() {
       // Add blinds to the pot and deduct from players' cash
       if player.id == small_blind {
         player.cash -= self.small_blind_amount;
@@ -178,14 +175,14 @@ impl GameState {
   }
 
   pub fn player_leaves(&mut self, player: Uuid) -> Vec<GameMessage> {
-    if !self.players.contains_key(&player) {
+    if !self.players.iter().any(|p| p.id == player) {
       return vec![];
     }
 
     let mut msgs = Vec::new();
 
     // Fold player if they leave
-    if let Some(player_state) = self.players.get_mut(&player) {
+    if let Some(player_state) = self.players.iter_mut().find(|p| p.id == player) {
       player_state.folded = true;
 
       msgs.push(GameMessage::PlayerActed(PlayerActed {
@@ -194,7 +191,7 @@ impl GameState {
       }));
     }
 
-    if self.players.iter().filter(|(_, p)| !p.folded).count() == 1 {
+    if self.players.iter().filter(|p| !p.folded).count() == 1 {
       // If only one player remains, end the game
       msgs.extend(self.end_game());
       return msgs;
@@ -202,13 +199,14 @@ impl GameState {
 
     if self.current_player == player {
       // If the current player leaves, find the next player
-      self.current_player = *self
+      self.current_player = self
         .players
-        .keys()
+        .iter()
         .cycle()
-        .skip_while(|&&p| p != self.current_player)
+        .skip_while(|&p| p.id != self.current_player)
         .skip(1)
-        .find(|&&p| !self.players.get(&p).unwrap().folded)
+        .find(|p| !p.folded)
+        .map(|p| p.id)
         .unwrap();
 
       msgs.push(GameMessage::PlayerTurn(PlayerTurn {
@@ -232,8 +230,17 @@ impl GameState {
       })];
     }
 
-    let previous = self.players.get(&self.previous_player).unwrap().bet;
-    let current = self.players.get_mut(&self.current_player).unwrap();
+    let previous = self
+      .players
+      .iter()
+      .find(|p| p.id == self.previous_player)
+      .unwrap()
+      .bet;
+    let current = self
+      .players
+      .iter_mut()
+      .find(|p| p.id == self.current_player)
+      .unwrap();
 
     let mut msgs = Vec::new();
     match cmd {
@@ -267,7 +274,7 @@ impl GameState {
       }
       GameCommand::Fold => {
         current.folded = true;
-        if self.players.iter().filter(|(_, p)| !p.folded).count() == 1 {
+        if self.players.iter().filter(|p| !p.folded).count() == 1 {
           msgs.extend(self.end_game());
         }
       }
@@ -297,13 +304,14 @@ impl GameState {
       id: self.current_player,
     }));
 
-    self.current_player = *self
+    self.current_player = self
       .players
-      .keys()
+      .iter()
       .cycle()
-      .skip_while(|&&p| p != self.current_player)
+      .skip_while(|&p| p.id != self.current_player)
       .skip(1)
-      .find(|&&p| !self.players.get(&p).unwrap().folded)
+      .find(|&p| !p.folded)
+      .map(|p| p.id)
       .unwrap();
 
     if !self.game_ended && self.game_running {
@@ -316,7 +324,7 @@ impl GameState {
   }
 
   fn check_next_round(&mut self) -> Vec<GameMessage> {
-    if self.players_checked == self.players.iter().filter(|(_, p)| !p.folded).count() {
+    if self.players_checked == self.players.iter().filter(|p| !p.folded).count() {
       if self.revealed_cards.len() < 5 {
         let mut msgs = Vec::new();
         if self.revealed_cards.is_empty() {
@@ -349,7 +357,7 @@ impl GameState {
   fn end_game(&mut self) -> Vec<GameMessage> {
     self.game_running = false;
 
-    let remaining_players: Vec<_> = self.players.values().filter(|p| !p.folded).collect();
+    let remaining_players: Vec<_> = self.players.iter().filter(|p| !p.folded).collect();
     let mut msgs = if remaining_players.len() != 1 {
       let community: [Card; 5] = self
         .revealed_cards
@@ -376,7 +384,7 @@ impl GameState {
 
       let pot = self.pot / winners.len() as i32;
 
-      for player in self.players.values_mut() {
+      for player in self.players.iter_mut() {
         if winners.contains(&player.id) {
           player.cash += pot;
         }
@@ -386,7 +394,7 @@ impl GameState {
         players: hands
           .iter()
           .map(|(&id, hand)| {
-            let player = self.players.get(&id).unwrap();
+            let player = self.players.iter().find(|p| p.id == id).unwrap();
             PlayerEndedInfo {
               id,
               cards: Some(player.cards),
@@ -410,8 +418,7 @@ impl GameState {
       })]
     };
 
-    let non_broke_players: Vec<&PlayerState> =
-      self.players.values().filter(|p| p.cash > 0).collect();
+    let non_broke_players: Vec<&PlayerState> = self.players.iter().filter(|p| p.cash > 0).collect();
     if non_broke_players.len() == 1 {
       // If only one player has cash left, they win the game
       let winner = non_broke_players[0];
