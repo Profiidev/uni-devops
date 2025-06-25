@@ -6,8 +6,8 @@ use crate::game::ws::{
   card::{Card, Hand},
   commands::{GameCommand, Raise},
   messages::{
-    GameEnded, GameInfo, GameMessage, InvalidCommand, PlayerActed, PlayerEndedInfo, PlayerGameInfo,
-    PlayerTurn, RoundEnded, YourCards,
+    GameEnded, GameInfo, GameMessage, InvalidCommand, PlayerActed, PlayerAction, PlayerEndedInfo,
+    PlayerGameInfo, PlayerTurn, RoundEnded, YourCards,
   },
 };
 
@@ -100,7 +100,7 @@ impl GameState {
     GameMessage::GameInfo(game_info)
   }
 
-  pub fn next_round(&mut self) -> Vec<GameMessage> {
+  pub fn next_round(&mut self, active_players: Vec<Uuid>) -> Vec<GameMessage> {
     if self.game_running {
       return vec![GameMessage::InvalidCommand(InvalidCommand {
         message: "Game is still running".to_string(),
@@ -118,7 +118,15 @@ impl GameState {
     // Reset players' bets for the next round
     for player in self.players.values_mut() {
       player.bet = 0;
-      player.folded = false;
+      if active_players.contains(&player.id) {
+        player.folded = false;
+      } else {
+        player.folded = true; // If not active, they are considered folded
+        msgs.push(GameMessage::PlayerActed(PlayerActed {
+          id: player.id,
+          action: PlayerAction::Fold,
+        }));
+      }
     }
 
     // Reset pot and revealed cards
@@ -176,8 +184,10 @@ impl GameState {
 
     let mut msgs = Vec::new();
 
-    // Remove the player from the game
-    self.players.remove(&player);
+    // Fold player if they leave
+    if let Some(player_state) = self.players.get_mut(&player) {
+      player_state.folded = true;
+    }
 
     if self.current_player == player {
       // If the current player leaves, find the next player

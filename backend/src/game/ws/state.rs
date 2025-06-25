@@ -350,7 +350,9 @@ impl Room {
       }
       GameCommand::NextRound => {
         if let Some(game_state) = &mut self.game_state {
-          for msg in game_state.next_round() {
+          let players = self.players.lock().await;
+          let active_players: Vec<Uuid> = players.keys().copied().collect();
+          for msg in game_state.next_round(active_players) {
             self.send_msg_to_all(msg).await;
           }
         } else {
