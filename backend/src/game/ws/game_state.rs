@@ -187,6 +187,17 @@ impl GameState {
     // Fold player if they leave
     if let Some(player_state) = self.players.get_mut(&player) {
       player_state.folded = true;
+
+      msgs.push(GameMessage::PlayerActed(PlayerActed {
+        id: player,
+        action: PlayerAction::Fold,
+      }));
+    }
+
+    if self.players.iter().filter(|(_, p)| !p.folded).count() == 1 {
+      // If only one player remains, end the game
+      msgs.extend(self.end_game());
+      return msgs;
     }
 
     if self.current_player == player {
