@@ -182,7 +182,7 @@ impl GlobalGameState {
         }
       }
       let mut players = room.players.lock().await;
-      players.remove(&player);
+      let player_name = players.remove(&player).map(|p| p.name);
       if players.is_empty() {
         drop(players);
         drop(room);
@@ -197,7 +197,7 @@ impl GlobalGameState {
         room
           .send_msg_to_all(GameMessage::PlayerLeft(PlayerInfo {
             id: player,
-            name: "".to_string(), // Name is not needed here
+            name: player_name.unwrap_or_default(),
           }))
           .await;
       }
