@@ -166,7 +166,9 @@ impl GlobalGameState {
 
     let _ = sender.send(room.room_info(db).await?).await;
     if let Some(game_state) = &room.game_state {
-      let _ = sender.send(game_state.game_info()).await;
+      let _ = sender
+        .send(GameMessage::GameInfo(game_state.game_info()))
+        .await;
     }
 
     Ok((receiver, room_arc.clone()))
@@ -234,7 +236,7 @@ impl Room {
       GameCommand::GameInfo => {
         if let Some(game_state) = &self.game_state {
           self
-            .send_msg_to_current_player(player, game_state.game_info())
+            .send_msg_to_current_player(player, GameMessage::GameInfo(game_state.game_info()))
             .await;
         } else {
           self
@@ -327,7 +329,9 @@ impl Room {
         );
 
         drop(players);
-        self.send_msg_to_all(state.game_info()).await;
+        self
+          .send_msg_to_all(GameMessage::GameStarted(state.game_info()))
+          .await;
 
         for player in state.players.values() {
           self

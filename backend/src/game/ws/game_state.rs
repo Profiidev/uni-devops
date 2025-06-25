@@ -79,8 +79,8 @@ impl GameState {
     }
   }
 
-  pub fn game_info(&self) -> GameMessage {
-    let game_info = GameInfo {
+  pub fn game_info(&self) -> GameInfo {
+    GameInfo {
       current_player: self.current_player,
       small_blind: self.small_blind,
       revealed_cards: self.revealed_cards.clone(),
@@ -95,9 +95,7 @@ impl GameState {
           folded: p.folded,
         })
         .collect(),
-    };
-
-    GameMessage::GameInfo(game_info)
+    }
   }
 
   pub fn next_round(&mut self, active_players: Vec<Uuid>) -> Vec<GameMessage> {
@@ -169,6 +167,8 @@ impl GameState {
         cards: player.cards,
       }));
     }
+
+    msgs.insert(0, GameMessage::GameStarted(self.game_info()));
 
     msgs.push(GameMessage::PlayerTurn(PlayerTurn {
       id: self.current_player,
