@@ -110,7 +110,7 @@
             break;
           case PlayerActionType.Raise:
             callAmount += data.action.amount;
-            // fallthrough intentional
+          // fallthrough intentional
           case PlayerActionType.Call:
             const difference = Math.min(callAmount - player.bet, player.cash);
             player.bet += difference;
