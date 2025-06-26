@@ -108,7 +108,7 @@ impl GlobalGameState {
           }
           Some(msg) = sub.next() => {
             let Ok(msg) = serde_json::from_slice::<NatsMessage>(&msg.payload) else {
-              log::warn!("Failed to parse message: {:?}", msg);
+              log::warn!("Failed to parse message: {msg:?}");
               return;
             };
             let players = players_.lock().await;

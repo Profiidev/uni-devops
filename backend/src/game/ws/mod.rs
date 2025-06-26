@@ -88,7 +88,7 @@ async fn game<'a>(
               },
               Some(Ok(Message::Text(msg))) => {
                 if let Err(err) = room.lock().await.handle_cmd(auth.sub, msg, &db).await {
-                  log::warn!("Error handling command: {}", err);
+                  log::warn!("Error handling command: {err}");
                 }
               },
               _ => (),
