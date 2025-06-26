@@ -192,8 +192,8 @@
             undefined
           ]}
           turn={gameState.current_player === player.id}
-          hand={roundEnded?.players.find((p) => p.id === player.id)?.bestHand ||
-            null}
+          hand={roundEnded?.players.find((p) => p.id === player.id)
+            ?.best_hand || null}
           winnings={roundEnded?.players.find((p) => p.id === player.id)
             ?.winnings || null}
         />
@@ -218,7 +218,7 @@
         cards={ownCards}
         turn={gameState?.current_player === ownPlayerInfo.id}
         hand={roundEnded?.players.find((p) => p.id === ownPlayerInfo?.id)
-          ?.bestHand || null}
+          ?.best_hand || null}
         winnings={roundEnded?.players.find((p) => p.id === ownPlayerInfo?.id)
           ?.winnings || null}
       />

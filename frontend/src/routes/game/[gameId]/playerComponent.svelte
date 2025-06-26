@@ -17,27 +17,24 @@
     ? 'folded'
     : ''}"
 >
-  <div class="cardContainer">
-    {#if !playerGameInfo?.folded}
+  {#if !playerGameInfo?.folded}
+    <div class="cardContainer">
       {#each cards as card}
         <div class="cardWrapper">
           <CardComponent {card} />
         </div>
       {/each}
-      <p class="bestHand">{hand?.type}</p>
-    {:else}
-      <p class="fold">Fold</p>
-    {/if}
-  </div>
-  <div class="info">
+    </div>
+  {:else}
+    <p class="fold">Fold</p>
+  {/if}
+  <div class="playerDetails">
     <h1 class="name">{name}</h1>
-    <p class="cash">
-      ${playerGameInfo.cash}
-      {#if winnings}
-        + {winnings}
-      {/if}
-    </p>
+    <p class="cash">${playerGameInfo.cash}</p>
   </div>
+  <p class="additionalDetails {winnings ? 'winner' : ''}">
+    {hand?.type}{#if winnings}: ${winnings}{/if}
+  </p>
 </div>
 
 <style>
@@ -59,7 +56,7 @@
     border: 2px dashed var(--primary-color);
   }
 
-  .info {
+  .playerDetails {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -108,6 +105,21 @@
   }
 
   .fold {
+    position: absolute;
+    z-index: 2;
+    transform: translateY(-60px);
+    font-weight: bold;
     font-size: x-large;
+  }
+
+  .additionalDetails {
+    position: absolute;
+    z-index: 2;
+    transform: translateY(50px);
+    font-size: large;
+  }
+
+  .winner {
+    color: var(--primary-color);
   }
 </style>
