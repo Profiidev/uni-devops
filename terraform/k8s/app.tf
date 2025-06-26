@@ -23,6 +23,25 @@ resource "kubernetes_secret" "image_pull" {
   }
 }
 
+resource "kubernetes_secret" "app" {
+  metadata {
+    name      = "app-secret"
+    namespace = kubernetes_namespace.app.metadata[0].name
+  }
+  type = "Opaque"
+  data = {
+    "DB_URL"              = "postgres://${random_string.sql_admin_username.result}:${random_password.sql_admin_password.result}@${var.pgql_database}-postgresql.${kubernetes_namespace.pgql.metadata[0].name}.svc:5432"
+    "DB_LOGGING"          = "true"
+    "CORS_ORIGIN"         = "https://dealing-with-devops.westeurope.cloudapp.azure.com"
+    "RUST_LOG"            = "info"
+    "AUTH_PEPPER"         = "super-geheimer-pepper"
+    "AUTH_ISSUER"         = "https://dealing-with-devops.westeurope.cloudapp.azure.com"
+    "AUTH_JWT_EXPIRATION" = "604800"
+    "NATS_URL"            = "nats://nats.${kubernetes_namespace.nats_ns.metadata[0].name}.svc:4222"
+    "NATS_UPDATE_SUBJECT" = "game_room"
+  }
+}
+
 resource "kubernetes_deployment" "backend" {
   metadata {
     name      = "backend"
@@ -33,6 +52,13 @@ resource "kubernetes_deployment" "backend" {
     selector {
       match_labels = {
         app = "backend"
+      }
+    }
+    strategy {
+      type = "RollingUpdate"
+      rolling_update {
+        max_surge       = 1
+        max_unavailable = 0
       }
     }
     template {
@@ -49,6 +75,12 @@ resource "kubernetes_deployment" "backend" {
           name              = "backend"
           image             = "ghcr.io/whiteduck-classroom/dealing-with-devops/backend:${var.image_tag}"
           image_pull_policy = "Always"
+          tty               = true
+          env_from {
+            secret_ref {
+              name = kubernetes_secret.app.metadata[0].name
+            }
+          }
           port {
             container_port = 8000
           }
@@ -68,6 +100,13 @@ resource "kubernetes_deployment" "frontend" {
     selector {
       match_labels = {
         app = "frontend"
+      }
+    }
+    strategy {
+      type = "RollingUpdate"
+      rolling_update {
+        max_surge       = 1
+        max_unavailable = 0
       }
     }
     template {
