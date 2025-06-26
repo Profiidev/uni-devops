@@ -1,0 +1,186 @@
+resource "kubernetes_namespace" "app" {
+  metadata {
+    name = "app"
+  }
+}
+
+resource "kubernetes_secret" "image_pull" {
+  metadata {
+    name      = "image-pull-secret"
+    namespace = kubernetes_namespace.app.metadata[0].name
+  }
+  type = "kubernetes.io/dockerconfigjson"
+  data = {
+    ".dockerconfigjson" = jsonencode({
+      auths = {
+        "https://ghcr.io" = {
+          username = var.image_pull_username
+          password = var.image_pull_secret
+          auth     = base64encode("${var.image_pull_username}:${var.image_pull_secret}")
+        }
+      }
+    })
+  }
+}
+
+resource "kubernetes_deployment" "backend" {
+  metadata {
+    name      = "backend"
+    namespace = kubernetes_namespace.app.metadata[0].name
+  }
+  spec {
+    replicas = 1
+    selector {
+      match_labels = {
+        app = "backend"
+      }
+    }
+    template {
+      metadata {
+        labels = {
+          app = "backend"
+        }
+      }
+      spec {
+        image_pull_secrets {
+          name = kubernetes_secret.image_pull.metadata[0].name
+        }
+        container {
+          name              = "backend"
+          image             = "ghcr.io/whiteduck-classroom/dealing-with-devops/backend:${var.image_tag}"
+          image_pull_policy = "Always"
+          port {
+            container_port = 8000
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_deployment" "frontend" {
+  metadata {
+    name      = "frontend"
+    namespace = kubernetes_namespace.app.metadata[0].name
+  }
+  spec {
+    replicas = 1
+    selector {
+      match_labels = {
+        app = "frontend"
+      }
+    }
+    template {
+      metadata {
+        labels = {
+          app = "frontend"
+        }
+      }
+      spec {
+        image_pull_secrets {
+          name = kubernetes_secret.image_pull.metadata[0].name
+        }
+        container {
+          name              = "frontend"
+          image             = "ghcr.io/whiteduck-classroom/dealing-with-devops/frontend:${var.image_tag}"
+          image_pull_policy = "Always"
+          port {
+            container_port = 3000
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "backend" {
+  metadata {
+    name      = "backend"
+    namespace = kubernetes_namespace.app.metadata[0].name
+  }
+  spec {
+    selector = {
+      app = "backend"
+    }
+    port {
+      port        = 8000
+      target_port = 8000
+    }
+    type = "ClusterIP"
+  }
+}
+
+resource "kubernetes_service" "frontend" {
+  metadata {
+    name      = "frontend"
+    namespace = kubernetes_namespace.app.metadata[0].name
+  }
+  spec {
+    selector = {
+      app = "frontend"
+    }
+    port {
+      port        = 3000
+      target_port = 3000
+    }
+    type = "ClusterIP"
+  }
+}
+
+resource "kubernetes_ingress" "backend" {
+  metadata {
+    name      = "backend"
+    namespace = kubernetes_namespace.app.metadata[0].name
+    annotations = {
+      "cert-manager.io/cluster-issuer" = var.cert_issuer_staging
+    }
+  }
+  spec {
+    ingress_class_name = var.ingress_class
+    rule {
+      host = "dealing-with-devops.westeurope.cloudapp.azure.com"
+      http {
+        path {
+          path = "/backend"
+          backend {
+            service_name = kubernetes_service.backend.metadata[0].name
+            service_port = 8000
+          }
+        }
+      }
+    }
+    tls {
+      hosts       = ["dealing-with-devops.westeurope.cloudapp.azure.com"]
+      secret_name = "app-tls"
+    }
+  }
+}
+
+resource "kubernetes_ingress" "frontend" {
+  metadata {
+    name      = "frontend"
+    namespace = kubernetes_namespace.app.metadata[0].name
+    annotations = {
+      "cert-manager.io/cluster-issuer" = var.cert_issuer_staging
+    }
+  }
+  spec {
+    ingress_class_name = var.ingress_class
+    rule {
+      host = "dealing-with-devops.westeurope.cloudapp.azure.com"
+      http {
+        path {
+          path = "/"
+          backend {
+            service_name = kubernetes_service.frontend.metadata[0].name
+            service_port = 3000
+          }
+        }
+      }
+    }
+    tls {
+      hosts       = ["dealing-with-devops.westeurope.cloudapp.azure.com"]
+      secret_name = "app-tls"
+    }
+  }
+}

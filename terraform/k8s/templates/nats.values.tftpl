@@ -1,0 +1,9 @@
+config:
+  cluster:
+    enabled: true
+    replicas: 1
+  merge:
+    accounts:
+      $SYS:
+        users:
+          - { user: system, password: a }

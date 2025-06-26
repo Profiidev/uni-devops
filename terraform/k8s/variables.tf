@@ -42,3 +42,20 @@ variable "cert_issuer_prod" {
   type    = string
   default = "letsencrypt-prod-issuer"
 }
+
+variable "pgql_database" {
+  type    = string
+  default = "pgql"
+}
+
+variable "image_tag" {
+  type = string
+}
+
+variable "image_pull_secret" {
+  type = string
+}
+
+variable "image_pull_username" {
+  type = string
+}
