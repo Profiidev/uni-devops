@@ -6,22 +6,24 @@
 
 <div class="card">
   {#if card !== undefined}
-    {card.rank} of {card.suit}
+    <img
+      src="/cards/{card.suit.toLowerCase()}_{card.rank.toLowerCase()}.svg"
+      alt="{card.rank} of {card.suit}"
+    />
   {:else}
-    ?
+    <img src="/cards/back.svg" alt="Back of Card" />
   {/if}
 </div>
 
 <style>
   .card {
-    padding: 8px;
-    border: 2px solid var(--surface-background);
-    color: var(--surface-background);
-    border-radius: 15px;
-    text-align: center;
     --card-width: clamp(60px, 10vw, 100px);
     width: var(--card-width);
     height: calc(1.4 * var(--card-width));
-    background-color: var(--text-color);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
   }
 </style>

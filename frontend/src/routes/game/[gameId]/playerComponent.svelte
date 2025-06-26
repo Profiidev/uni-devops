@@ -78,7 +78,7 @@
     display: flex;
     gap: -20px;
     z-index: 0;
-    transform: translateY(calc(-1 * clamp(45px, 7vw, 70px)));
+    transform: translateY(calc(-1 * clamp(42px, 7.4vw, 74px)));
   }
 
   .cardWrapper {
