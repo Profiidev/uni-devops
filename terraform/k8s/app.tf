@@ -166,12 +166,13 @@ resource "kubernetes_service" "frontend" {
   }
 }
 
-resource "kubernetes_ingress" "backend" {
+resource "kubernetes_ingress_v1" "backend" {
   metadata {
     name      = "backend"
     namespace = kubernetes_namespace.app.metadata[0].name
     annotations = {
       "cert-manager.io/cluster-issuer" = var.cert_issuer_staging
+      "nginx.ingress.kubernetes.io/rewrite-target" = "/$1"
     }
   }
   spec {
@@ -180,10 +181,15 @@ resource "kubernetes_ingress" "backend" {
       host = "dealing-with-devops.westeurope.cloudapp.azure.com"
       http {
         path {
-          path = "/backend"
+          path      = "/backend/(.*)"
+          path_type = "Prefix"
           backend {
-            service_name = kubernetes_service.backend.metadata[0].name
-            service_port = 8000
+            service {
+              name = kubernetes_service.backend.metadata[0].name
+              port {
+                number = 8000
+              }
+            }
           }
         }
       }
@@ -195,7 +201,7 @@ resource "kubernetes_ingress" "backend" {
   }
 }
 
-resource "kubernetes_ingress" "frontend" {
+resource "kubernetes_ingress_v1" "frontend" {
   metadata {
     name      = "frontend"
     namespace = kubernetes_namespace.app.metadata[0].name
@@ -209,10 +215,15 @@ resource "kubernetes_ingress" "frontend" {
       host = "dealing-with-devops.westeurope.cloudapp.azure.com"
       http {
         path {
-          path = "/"
+          path      = "/"
+          path_type = "Prefix"
           backend {
-            service_name = kubernetes_service.frontend.metadata[0].name
-            service_port = 3000
+            service {
+              name = kubernetes_service.frontend.metadata[0].name
+              port {
+                number = 3000
+              }
+            }
           }
         }
       }
