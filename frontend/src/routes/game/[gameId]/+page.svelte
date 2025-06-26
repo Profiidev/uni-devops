@@ -18,7 +18,8 @@
   } from '$lib/ws/message.svelte';
   import { userInfo } from '$lib/user.svelte.js';
   import { CommandType } from '$lib/ws/command.svelte.js';
-  import Player from './player.svelte';
+  import PlayerComponent from './playerComponent.svelte';
+  import CardComponent from './cardComponent.svelte';
 
   const { data } = $props();
   const { gameId } = data;
@@ -44,11 +45,9 @@
   let raiseAmount: number = $state(0);
   let revealedCards: Card[] = $state([]);
   let paddedCards = $derived(() =>
-    Array.from(
-      { length: 5 },
-      (_, i) => revealedCards[i] || { rank: '?', suit: '?' }
-    )
+    Array.from({ length: 5 }, (_, i) => revealedCards[i] || undefined)
   );
+  let pot: number = $state(0);
   let callAmount: number = 0;
   let roundEnded: RoundEnded | null = $state(null);
 
@@ -69,7 +68,10 @@
         break;
       case MessageType.GameStarted:
         gameState = data;
-        if (roomInfo) roomInfo.game_running = true;
+        if (roomInfo) {
+          roomInfo.game_running = true;
+          pot = roomInfo.small_blind * 3;
+        }
         break;
       case MessageType.PlayerJoined:
         if (!roomInfo) break;
@@ -115,6 +117,7 @@
             const difference = Math.min(callAmount - player.bet, player.cash);
             player.bet += difference;
             player.cash -= difference;
+            pot += difference;
             break;
         }
         break;
@@ -154,7 +157,7 @@
   <div class="enemyPlayerContainer">
     {#if enemyPlayer().length > 0}
       {#each enemyPlayer() as player}
-        <Player
+        <PlayerComponent
           name={roomInfo.players.find((p) => p.id === player.id)?.name ||
             'Unknown Player'}
           playerGameInfo={player}
@@ -165,19 +168,18 @@
     {/if}
   </div>
 
-  <div class="centerCards">
-    <div class="cardContainer">
+  <div class="center">
+    <p class="pot">Pot: {pot}</p>
+    <div class="centerCards">
       {#each paddedCards() as card}
-        <div class="card">
-          {card.rank} of {card.suit}
-        </div>
+        <CardComponent {card} />
       {/each}
     </div>
   </div>
 
   <div class="ownPlayerContainer">
     {#if ownPlayer() && ownPlayerInfo}
-      <Player
+      <PlayerComponent
         name={ownPlayerInfo?.name || 'You'}
         playerGameInfo={ownPlayer()!}
         cards={ownCards}
@@ -197,8 +199,9 @@
       Check
     </button>
 
-    <div class="raise-container">
+    <div class="raiseContainer">
       <input
+        class="raiseSlider"
         type="range"
         bind:value={raiseAmount}
         min="1"
@@ -206,7 +209,7 @@
         step="1"
         defaultValue="10"
       />
-      <p>{raiseAmount}</p>
+      <input class="raiseNumber" type="text" bind:value={raiseAmount}/>
       <button
         onclick={() => {
           sendWebSocketMessage({
@@ -237,31 +240,51 @@
     align-items: center;
   }
 
-  .centerCards {
+  .center {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 5px;
+    flex-direction: column;
+    gap: 10px;
     margin: 20px;
+  }
+
+  .centerCards {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
 
   .actions {
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 30px;
     margin: 20px;
   }
 
-  .raise-container {
+  .actions button {
+    padding: 5px 10px;
+    background-color: var(--primary-color);
+    border: 3px solid var(--surface-background);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: large;
+  }
+
+  .raiseContainer {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 5px;
+    gap: 10px;
   }
 
-  .raise-container p {
-    width: 25px;
+  .raiseNumber {
+    width: 28px;
+    text-align: center;
   }
 </style>
