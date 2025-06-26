@@ -14,11 +14,15 @@
     : ''}"
 >
   <div class="cardContainer">
-    {#each cards as card}
-      <div class="cardWrapper">
-        <CardComponent {card} />
-      </div>
-    {/each}
+    {#if !playerGameInfo?.folded}
+      {#each cards as card}
+        <div class="cardWrapper">
+          <CardComponent {card} />
+        </div>
+      {/each}
+    {:else}
+      <p class="fold">Fold</p>
+    {/if}
   </div>
   <div class="info">
     <h1 class="name">{name}</h1>
@@ -85,11 +89,15 @@
     transform-origin: center;
   }
 
-  .cardContainer > *:first-child {
+  .cardContainer > div:first-child {
     transform: rotate(-20deg) translateX(clamp(12.5px, 2.5vw, 25px));
   }
 
-  .cardContainer > *:nth-child(2) {
+  .cardContainer > div:nth-child(2) {
     transform: rotate(20deg) translateX(calc(-1 * clamp(12.5px, 2.5vw, 25px)));
+  }
+
+  .fold {
+    font-size: x-large;
   }
 </style>

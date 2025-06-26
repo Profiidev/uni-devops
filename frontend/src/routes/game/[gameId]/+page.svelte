@@ -43,10 +43,13 @@
 
   let ownCards: Card[] = $state([]);
   let raiseAmount: number = $state(0);
-  let revealedCards: Card[] = $state([]);
-  let paddedCards = $derived(() =>
-    Array.from({ length: 5 }, (_, i) => revealedCards[i] || undefined)
-  );
+  let paddedCards: () => Card[] | undefined[] = $derived(() => {
+    if (!gameState) return Array(5).fill(undefined);
+    return Array.from(
+      { length: 5 },
+      (_, i) => gameState?.revealed_cards[i] || undefined
+    );
+  });
   let pot: number = $state(0);
   let callAmount: number = 0;
   let roundEnded: RoundEnded | null = $state(null);
@@ -57,7 +60,6 @@
     switch (data.type) {
       case MessageType.RoomInfo:
         roomInfo = data;
-        callAmount = data.small_blind * 2;
         break;
       case MessageType.InvalidCommand:
         console.error('Invalid command received:', data);
@@ -67,8 +69,10 @@
         if (roomInfo) roomInfo.game_running = true;
         break;
       case MessageType.GameStarted:
+        roundEnded = null;
         gameState = data;
         if (roomInfo) {
+          callAmount = roomInfo.small_blind * 2;
           roomInfo.game_running = true;
           pot = roomInfo.small_blind * 3;
         }
@@ -88,15 +92,16 @@
         );
         break;
       case MessageType.PlayerTurn:
-        if (gameState) gameState.current_player = data.id;
-        else sendWebSocketMessage({ type: CommandType.GameInfo });
+        if (!gameState) break;
+        gameState.current_player = data.id;
         break;
       case MessageType.YourCards:
         ownCards = data.cards;
         break;
       case MessageType.CardRevealed:
-        revealedCards = [
-          ...revealedCards,
+        if (!gameState) break;
+        gameState.revealed_cards = [
+          ...gameState.revealed_cards,
           { rank: data.rank, suit: data.suit }
         ];
         break;
@@ -121,8 +126,33 @@
             break;
         }
         break;
+      case MessageType.RoundEnded:
+        if (!roomInfo || !gameState) break;
+        roundEnded = data;
+        pot = 0;
+        gameState.current_player = 'null';
+        for (const player of roundEnded.players) {
+          const playerInGameState = gameState.players.find(
+            (p) => p.id === player.id
+          );
+          if (playerInGameState) {
+            playerInGameState.cash += player.winnings;
+            playerInGameState.bet = 0;
+          }
+        }
+        break;
+      case MessageType.GameEnded:
+        // TODO handle game end
+        break;
+      case MessageType.BackToLobby:
+        // TODO not yet needed
+        break;
     }
   }
+
+  /* RoundEnded = 'RoundEnded',
+  GameEnded = 'GameEnded',
+  BackToLobby = 'BackToLobby',*/
 
   onMount(() => {
     userInfo().then((playerInfo) => {
@@ -161,7 +191,10 @@
           name={roomInfo.players.find((p) => p.id === player.id)?.name ||
             'Unknown Player'}
           playerGameInfo={player}
-          cards={[undefined, undefined]}
+          cards={roundEnded?.players.find((p) => p.id === player.id)?.cards || [
+            undefined,
+            undefined
+          ]}
           turn={gameState.current_player === player.id}
         />
       {/each}
@@ -189,38 +222,62 @@
   </div>
 
   <div class="actions">
-    <button onclick={() => sendWebSocketMessage({ type: CommandType.Fold })}>
-      Fold
-    </button>
-    <button onclick={() => sendWebSocketMessage({ type: CommandType.Call })}>
-      Call
-    </button>
-    <button onclick={() => sendWebSocketMessage({ type: CommandType.Check })}>
-      Check
-    </button>
+    {#if !roundEnded}
+      {#if !ownPlayer()?.folded}
+        <button
+          onclick={() => sendWebSocketMessage({ type: CommandType.Fold })}
+        >
+          Fold
+        </button>
+        <button
+          onclick={() => sendWebSocketMessage({ type: CommandType.Call })}
+        >
+          Call
+        </button>
+        <button
+          onclick={() => sendWebSocketMessage({ type: CommandType.Check })}
+        >
+          Check
+        </button>
 
-    <div class="raiseContainer">
-      <input
-        class="raiseSlider"
-        type="range"
-        bind:value={raiseAmount}
-        min="1"
-        max="150"
-        step="1"
-        defaultValue="10"
-      />
-      <input class="raiseNumber" type="text" bind:value={raiseAmount} />
+        <div class="raiseContainer">
+          <input
+            class="raiseSlider"
+            type="range"
+            bind:value={raiseAmount}
+            min="1"
+            max="150"
+            step="1"
+            defaultValue="10"
+          />
+          <input class="raiseNumber" type="text" bind:value={raiseAmount} />
+          <button
+            onclick={() => {
+              sendWebSocketMessage({
+                type: CommandType.Raise,
+                amount: raiseAmount
+              });
+            }}
+          >
+            Raise
+          </button>
+        </div>
+      {/if}
+    {:else}
       <button
-        onclick={() => {
-          sendWebSocketMessage({
-            type: CommandType.Raise,
-            amount: raiseAmount
-          });
-        }}
+        onclick={() => sendWebSocketMessage({ type: CommandType.NextRound })}
       >
-        Raise
+        Next Round
       </button>
-    </div>
+      {#if roomInfo?.owner === ownPlayerInfo?.id}
+        <button
+          onclick={() =>
+            sendWebSocketMessage({ type: CommandType.BackToLobby })}
+        >
+          Back to Lobby
+        </button>
+      {/if}
+    {/if}
   </div>
 {:else}
   <p>Loading game information...</p>
