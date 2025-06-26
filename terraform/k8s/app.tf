@@ -30,7 +30,7 @@ resource "kubernetes_secret" "app" {
   }
   type = "Opaque"
   data = {
-    "DB_URL"              = "postgres://${random_string.sql_admin_username.result}:${random_password.sql_admin_password.result}@${var.pgql_database}-postgresql.${kubernetes_namespace.pgql.metadata[0].name}.svc:5432"
+    "DB_URL"              = "postgres://${random_string.sql_admin_username.result}:${random_password.sql_admin_password.result}@${var.pgql_database}-postgresql.${kubernetes_namespace.pgql.metadata[0].name}.svc:5432/${var.pgql_database}"
     "DB_LOGGING"          = "true"
     "CORS_ORIGIN"         = "https://dealing-with-devops.westeurope.cloudapp.azure.com"
     "RUST_LOG"            = "info"
