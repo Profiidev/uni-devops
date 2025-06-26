@@ -13,7 +13,8 @@
     type RoundEnded,
     type PlayerGameInfo,
     type Message,
-    type GameState
+    type GameState,
+    PlayerActionType
   } from '$lib/ws/message.svelte';
   import { userInfo } from '$lib/user.svelte.js';
   import { CommandType } from '$lib/ws/command.svelte.js';
@@ -22,26 +23,23 @@
   const { data } = $props();
   const { gameId } = data;
 
-  let roomInfo: RoomInfo = $state({
-    type: MessageType.RoomInfo,
-    id: gameId,
-    players: [],
-    owner: '',
-    game_running: false,
-    starting_cash: 0,
-    small_blind: 0
+  let roomInfo: RoomInfo | null = $state(null);
+  let ownPlayerInfo: PlayerInfo | null = $state(null);
+  let gameState: GameState | null = $state(null);
+  let ownPlayer: () => PlayerGameInfo | null = $derived(() => {
+    if (!gameState || !ownPlayerInfo) return null;
+    const ownId = ownPlayerInfo.id;
+    return gameState.players.find((p) => p.id === ownId) || null;
   });
-  let ownPlayerInfo: PlayerInfo | undefined = $state();
-  let gameState: GameState | undefined = $state();
-  let ownPlayer: () => PlayerGameInfo | undefined = $derived(() => {
-    return gameState?.players.find((p) => p.id === ownPlayerInfo!.id);
-  });
-  let enemyPlayer: () => PlayerGameInfo[] | undefined = $derived(() => {
-    const ps = gameState?.players || [];
-    const index = ps.findIndex((p) => p.id === ownPlayerInfo!.id);
-    if (index === -1) return undefined;
+  let enemyPlayer: () => PlayerGameInfo[] = $derived(() => {
+    if (!gameState || !ownPlayerInfo) return [];
+    const ps = gameState.players;
+    const ownId = ownPlayerInfo.id;
+    const index = ps.findIndex((p) => p.id === ownId);
+    if (index === -1) return [];
     return [...ps.slice(index + 1), ...ps.slice(0, index)];
   });
+
   let ownCards: Card[] = $state([]);
   let raiseAmount: number = $state(0);
   let revealedCards: Card[] = $state([]);
@@ -52,7 +50,7 @@
     )
   );
   let callAmount: number = 0;
-  let roundEnded: RoundEnded | undefined = $state();
+  let roundEnded: RoundEnded | null = $state(null);
 
   function handleIncoming(data: Message) {
     console.log('Received data:', data);
@@ -67,21 +65,22 @@
         break;
       case MessageType.GameInfo:
         gameState = data;
-        roomInfo.game_running = true;
+        if (roomInfo) roomInfo.game_running = true;
         break;
       case MessageType.GameStarted:
         gameState = data;
-        roomInfo.game_running = true;
+        if (roomInfo) roomInfo.game_running = true;
         break;
       case MessageType.PlayerJoined:
-        if (!roomInfo.players.some((p) => p.id === data.id)) {
-          roomInfo.players = [
-            ...(roomInfo.players || []),
-            { id: data.id, name: data.name }
-          ];
-        }
+        if (!roomInfo) break;
+        if (roomInfo.players.some((p) => p.id === data.id)) break;
+        roomInfo.players = [
+          ...(roomInfo.players || []),
+          { id: data.id, name: data.name }
+        ];
         break;
       case MessageType.PlayerLeft:
+        if (!roomInfo) break;
         roomInfo.players = roomInfo.players.filter(
           (p: PlayerInfo) => p.id !== data.id
         );
@@ -100,40 +99,22 @@
         ];
         break;
       case MessageType.PlayerActed:
+        if (!gameState) break;
+        const player = gameState.players.find((p) => p.id === data.id);
+        if (!player) break;
         switch (data.action.type) {
-          case 'Fold':
-            if (gameState) {
-              gameState.players.find((p) => p.id === data.id)!.folded = true;
-            }
+          case PlayerActionType.Fold:
+            player.folded = true;
             break;
-          case 'Call':
-            if (gameState) {
-              const player = gameState.players.find((p) => p.id === data.id);
-              if (player) {
-                const difference = Math.min(
-                  callAmount - player.bet,
-                  player.cash
-                );
-                player.bet += difference;
-                player.cash -= difference;
-              }
-            }
+          case PlayerActionType.Check:
             break;
-          case 'Check':
-            break;
-          case 'Raise':
-            if (gameState) {
-              const player = gameState.players.find((p) => p.id === data.id);
-              if (player) {
-                callAmount += data.action.amount;
-                const difference = Math.min(
-                  callAmount - player.bet,
-                  player.cash
-                );
-                player.bet += difference;
-                player.cash -= difference;
-              }
-            }
+          case PlayerActionType.Raise:
+            callAmount += data.action.amount;
+            // fallthrough intentional
+          case PlayerActionType.Call:
+            const difference = Math.min(callAmount - player.bet, player.cash);
+            player.bet += difference;
+            player.cash -= difference;
             break;
         }
         break;
@@ -155,7 +136,9 @@
   });
 </script>
 
-{#if !roomInfo.game_running}
+{#if !roomInfo}
+  <p>Loading room information...</p>
+{:else if !roomInfo.game_running}
   <h2>Player:</h2>
   {#each roomInfo.players as player}
     <p>{player.name}</p>
@@ -169,8 +152,8 @@
   {/if}
 {:else if gameState}
   <div class="enemyPlayerContainer">
-    {#if enemyPlayer !== undefined}
-      {#each enemyPlayer()! as player}
+    {#if enemyPlayer().length > 0}
+      {#each enemyPlayer() as player}
         <Player
           name={roomInfo.players.find((p) => p.id === player.id)?.name ||
             'Unknown Player'}
@@ -193,12 +176,12 @@
   </div>
 
   <div class="ownPlayerContainer">
-    {#if ownPlayer !== undefined}
+    {#if ownPlayer() && ownPlayerInfo}
       <Player
         name={ownPlayerInfo?.name || 'You'}
         playerGameInfo={ownPlayer()!}
         cards={ownCards}
-        turn={gameState.current_player === ownPlayerInfo?.id}
+        turn={gameState?.current_player === ownPlayerInfo.id}
       />
     {/if}
   </div>
