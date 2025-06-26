@@ -33,7 +33,8 @@
     <p class="cash">${playerGameInfo.cash}</p>
   </div>
   <p class="additionalDetails {winnings ? 'winner' : ''}">
-    {hand?.type}{#if winnings}: ${winnings}{/if}
+    {#if hand}{hand?.type}:
+    {/if}{#if winnings}+${winnings}{/if}
   </p>
 </div>
 

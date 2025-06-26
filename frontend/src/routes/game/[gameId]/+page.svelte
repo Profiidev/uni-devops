@@ -42,7 +42,7 @@
   });
 
   let ownCards: Card[] = $state([]);
-  let raiseAmount: number = $state(0);
+  let raiseAmount: number = $state(1);
   let paddedCards: () => Card[] | undefined[] = $derived(() => {
     if (!gameState) return Array(5).fill(undefined);
     return Array.from(
@@ -51,7 +51,7 @@
     );
   });
   let pot: number = $state(0);
-  let callAmount: number = 0;
+  let callAmount: number = $state(0);
   let roundEnded: RoundEnded | null = $state(null);
 
   function handleIncoming(data: Message) {
@@ -123,6 +123,14 @@
             player.bet += difference;
             player.cash -= difference;
             pot += difference;
+            if (
+              ownPlayer() &&
+              (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount <
+                raiseAmount
+            ) {
+              raiseAmount =
+                (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount;
+            }
             break;
         }
         break;
@@ -233,16 +241,19 @@
         >
           Fold
         </button>
-        <button
-          onclick={() => sendWebSocketMessage({ type: CommandType.Call })}
-        >
-          Call
-        </button>
-        <button
-          onclick={() => sendWebSocketMessage({ type: CommandType.Check })}
-        >
-          Check
-        </button>
+        {#if callAmount > (ownPlayer()?.bet || 0)}
+          <button
+            onclick={() => sendWebSocketMessage({ type: CommandType.Call })}
+          >
+            Call
+          </button>
+        {:else}
+          <button
+            onclick={() => sendWebSocketMessage({ type: CommandType.Check })}
+          >
+            Check
+          </button>
+        {/if}
 
         <div class="raiseContainer">
           <input
@@ -250,11 +261,16 @@
             type="range"
             bind:value={raiseAmount}
             min="1"
-            max="150"
+            max={Math.min(
+              Math.max(
+                (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount,
+                0
+              ),
+              150
+            )}
             step="1"
-            defaultValue="10"
           />
-          <input class="raiseNumber" type="text" bind:value={raiseAmount} />
+          <p class="raiseNumber">{raiseAmount}</p>
           <button
             onclick={() => {
               sendWebSocketMessage({
@@ -333,6 +349,7 @@
     background-color: var(--primary-color);
     border: 3px solid var(--surface-background);
     border-radius: 10px;
+    min-width: 80px;
     cursor: pointer;
     font-size: large;
   }
