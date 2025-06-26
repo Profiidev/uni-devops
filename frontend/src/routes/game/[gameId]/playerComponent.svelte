@@ -2,12 +2,14 @@
   import type { Card, Hand, PlayerGameInfo } from '$lib/ws/message.svelte';
   import CardComponent from './cardComponent.svelte';
 
-  export let name: String; // TODO change to runes mode?
-  export let playerGameInfo: PlayerGameInfo;
-  export let cards: Card[] | undefined[];
-  export let turn: boolean;
-  export let hand: Hand | null; // TODO: why doesn't it show best hand
-  export let winnings: number | null;
+  const { name, playerGameInfo, cards, turn, hand, winnings } = $props<{
+    name: String;
+    playerGameInfo: PlayerGameInfo;
+    cards: Card[] | undefined[];
+    turn: boolean;
+    hand: Hand | null;
+    winnings: number | null;
+  }>();
 </script>
 
 <div

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Card } from '$lib/ws/message.svelte';
 
-  export let card: Card | undefined;
+  const { card } = $props<{ card?: Card }>();
 </script>
 
 <div class="card">
