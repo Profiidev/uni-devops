@@ -1,11 +1,13 @@
 <script lang="ts">
-  import type { Card, PlayerGameInfo } from '$lib/ws/message.svelte';
+  import type { Card, Hand, PlayerGameInfo } from '$lib/ws/message.svelte';
   import CardComponent from './cardComponent.svelte';
 
-  export let name: String;
+  export let name: String; // TODO change to runes mode?
   export let playerGameInfo: PlayerGameInfo;
   export let cards: Card[] | undefined[];
   export let turn: boolean;
+  export let hand: Hand | null; // TODO: why doesn't it show best hand
+  export let winnings: number | null;
 </script>
 
 <div
@@ -20,13 +22,19 @@
           <CardComponent {card} />
         </div>
       {/each}
+      <p class="bestHand">{hand?.type}</p>
     {:else}
       <p class="fold">Fold</p>
     {/if}
   </div>
   <div class="info">
     <h1 class="name">{name}</h1>
-    <p class="cash">${playerGameInfo.cash}</p>
+    <p class="cash">
+      ${playerGameInfo.cash}
+      {#if winnings}
+        + {winnings}
+      {/if}
+    </p>
   </div>
 </div>
 

@@ -136,7 +136,7 @@
             (p) => p.id === player.id
           );
           if (playerInGameState) {
-            playerInGameState.cash += player.winnings;
+            //playerInGameState.cash += player.winnings;
             playerInGameState.bet = 0;
           }
         }
@@ -149,10 +149,6 @@
         break;
     }
   }
-
-  /* RoundEnded = 'RoundEnded',
-  GameEnded = 'GameEnded',
-  BackToLobby = 'BackToLobby',*/
 
   onMount(() => {
     userInfo().then((playerInfo) => {
@@ -196,6 +192,10 @@
             undefined
           ]}
           turn={gameState.current_player === player.id}
+          hand={roundEnded?.players.find((p) => p.id === player.id)?.bestHand ||
+            null}
+          winnings={roundEnded?.players.find((p) => p.id === player.id)
+            ?.winnings || null}
         />
       {/each}
     {/if}
@@ -217,6 +217,10 @@
         playerGameInfo={ownPlayer()!}
         cards={ownCards}
         turn={gameState?.current_player === ownPlayerInfo.id}
+        hand={roundEnded?.players.find((p) => p.id === ownPlayerInfo?.id)
+          ?.bestHand || null}
+        winnings={roundEnded?.players.find((p) => p.id === ownPlayerInfo?.id)
+          ?.winnings || null}
       />
     {/if}
   </div>
