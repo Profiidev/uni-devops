@@ -209,7 +209,7 @@
         step="1"
         defaultValue="10"
       />
-      <input class="raiseNumber" type="text" bind:value={raiseAmount}/>
+      <input class="raiseNumber" type="text" bind:value={raiseAmount} />
       <button
         onclick={() => {
           sendWebSocketMessage({

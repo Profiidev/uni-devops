@@ -38,7 +38,7 @@
     padding: 30px;
     z-index: -1;
     border-radius: 50%;
-    border: 2px dashed var(--background-color)
+    border: 2px dashed var(--background-color);
   }
 
   .playerTurn {
