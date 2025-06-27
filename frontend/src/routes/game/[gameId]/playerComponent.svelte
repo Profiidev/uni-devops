@@ -10,6 +10,19 @@
     hand: Hand | null;
     winnings: number | null;
   }>();
+
+  const endInfo: () => String = $derived(() => {
+    let info = '';
+    if (hand) {
+      info += `${hand.type}`;
+      if (winnings) {
+        info += `: +${winnings}`;
+      }
+    } else if (winnings) {
+      info += `+$${winnings}`;
+    }
+    return info;
+  });
 </script>
 
 <div
@@ -32,10 +45,7 @@
     <h1 class="name">{name}</h1>
     <p class="cash">${playerGameInfo.cash}</p>
   </div>
-  <p class="additionalDetails {winnings ? 'winner' : ''}">
-    {#if hand}{hand?.type}:
-    {/if}{#if winnings}+${winnings}{/if}
-  </p>
+  <p class="additionalDetails {winnings ? 'winner' : ''}">{endInfo()}</p>
 </div>
 
 <style>

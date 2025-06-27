@@ -210,7 +210,11 @@
   </div>
 
   <div class="center">
-    <p class="pot">Pot: {pot}</p>
+    <p class="pot">
+      {#if !roundEnded}
+        Pot: {pot}
+      {/if}
+    </p>
     <div class="centerCards">
       {#each paddedCards() as card}
         <CardComponent {card} />
