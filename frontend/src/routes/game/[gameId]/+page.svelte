@@ -245,49 +245,61 @@
   <div class="actions">
     {#if !roundEnded}
       {#if !ownPlayer()?.folded}
-        <button
-          onclick={() => sendWebSocketMessage({ type: CommandType.Fold })}
+        <div
+          class="gameActions {gameState?.current_player === ownPlayerInfo?.id
+            ? 'yourTurn'
+            : ''}"
         >
-          Fold
-        </button>
-        {#if callAmount > (ownPlayer()?.bet || 0)}
           <button
-            onclick={() => sendWebSocketMessage({ type: CommandType.Call })}
+            onclick={() => sendWebSocketMessage({ type: CommandType.Fold })}
           >
-            Call
+            Fold
           </button>
-        {:else}
-          <button
-            onclick={() => sendWebSocketMessage({ type: CommandType.Check })}
-          >
-            Check
-          </button>
-        {/if}
+          {#if callAmount > (ownPlayer()?.bet || 0)}
+            <button
+              onclick={() => sendWebSocketMessage({ type: CommandType.Call })}
+            >
+              Call
+            </button>
+          {:else}
+            <button
+              onclick={() => sendWebSocketMessage({ type: CommandType.Check })}
+            >
+              Check
+            </button>
+          {/if}
 
-        <div class="raiseContainer">
-          <input
-            type="range"
-            bind:value={raiseAmount}
-            min="1"
-            max={maxRaiseAmount()}
-            step="1"
-          />
-          <input
-            type="number"
-            bind:value={raiseAmount}
-            min="1"
-            max={maxRaiseAmount()}
-          />
-          <button
-            onclick={() => {
-              sendWebSocketMessage({
-                type: CommandType.Raise,
-                amount: raiseAmount
-              });
-            }}
+          <div
+            class="raiseContainer {maxRaiseAmount() > 0
+              ? 'possibleToRaise'
+              : ''}"
           >
-            Raise
-          </button>
+            <input
+              type="range"
+              class="raiseSlider"
+              bind:value={raiseAmount}
+              min="1"
+              max={maxRaiseAmount()}
+              step="1"
+            />
+            <input
+              type="number"
+              class="raiseInput"
+              bind:value={raiseAmount}
+              min="1"
+              max={maxRaiseAmount()}
+            />
+            <button
+              onclick={() => {
+                sendWebSocketMessage({
+                  type: CommandType.Raise,
+                  amount: raiseAmount
+                });
+              }}
+            >
+              Raise
+            </button>
+          </div>
         </div>
       {/if}
     {:else if roomInfo?.owner === ownPlayerInfo?.id}
@@ -344,28 +356,53 @@
 
   .actions {
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 30px;
     margin: 20px;
-  }
 
-  .actions button {
-    padding: 5px 10px;
-    background-color: var(--primary-color);
-    border: 3px solid var(--surface-background);
-    border-radius: 10px;
-    min-width: 80px;
-    cursor: pointer;
-    font-size: large;
-  }
+    button {
+      padding: 5px 10px;
+      background-color: var(--primary-color);
+      border: 3px solid var(--surface-background);
+      border-radius: 10px;
+      min-width: 80px;
+      font-size: large;
+    }
 
-  .raiseContainer {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
+    .gameActions {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 30px;
+      opacity: 0.6;
+
+      .raiseContainer {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        opacity: 0.6;
+
+        button {
+          cursor: default;
+        }
+      }
+
+      .possibleToRaise {
+          opacity: 1;
+
+          button {
+            cursor: pointer;
+          }
+        }
+    }
+
+    .yourTurn {
+      opacity: 1;
+
+      button {
+        cursor: pointer;
+      }
+    }
   }
 </style>
