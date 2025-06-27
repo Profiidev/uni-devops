@@ -186,7 +186,7 @@ impl GameState {
   }
 
   pub fn player_leaves(&mut self, player: Uuid) -> Vec<GameMessage> {
-    if !self.players.iter().any(|p| p.id == player) {
+    if !self.players.iter().any(|p| p.id == player) || !self.game_running {
       return vec![];
     }
 

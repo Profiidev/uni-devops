@@ -183,7 +183,8 @@ impl GlobalGameState {
           room.send_msg_to_all(msg).await;
         }
       }
-      let mut players = room.players.lock().await;
+      let mut players: rocket::tokio::sync::MutexGuard<'_, HashMap<Uuid, Player>> =
+        room.players.lock().await;
       let player_name = players.remove(&player).map(|p| p.name);
       if players.is_empty() {
         drop(players);
@@ -196,6 +197,7 @@ impl GlobalGameState {
         room.nats_notify.notify_one();
         room.nats_task.abort();
       } else {
+        drop(players);
         room
           .send_msg_to_all(GameMessage::PlayerLeft(PlayerInfo {
             id: player,
@@ -367,6 +369,7 @@ impl Room {
         if let Some(game_state) = &mut self.game_state {
           let players = self.players.lock().await;
           let active_players: Vec<Uuid> = players.keys().copied().collect();
+          drop(players);
           let (all, player_cards) = game_state.next_round(active_players);
           for msg in all {
             if let GameMessage::InvalidCommand(_) = &msg {
