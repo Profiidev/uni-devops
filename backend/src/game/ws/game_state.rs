@@ -25,6 +25,7 @@ pub struct GameState {
   pub game_ended: bool,
 }
 
+#[derive(Clone, Copy)]
 pub struct PlayerState {
   pub id: Uuid,
   pub bet: i32,
@@ -95,11 +96,17 @@ impl GameState {
     }
   }
 
-  pub fn next_round(&mut self, active_players: Vec<Uuid>) -> Vec<GameMessage> {
+  pub fn next_round(
+    &mut self,
+    active_players: Vec<Uuid>,
+  ) -> (Vec<GameMessage>, HashMap<Uuid, GameMessage>) {
     if self.game_running {
-      return vec![GameMessage::InvalidCommand(InvalidCommand {
-        message: "Game is still running".to_string(),
-      })];
+      return (
+        vec![GameMessage::InvalidCommand(InvalidCommand {
+          message: "Game is still running".to_string(),
+        })],
+        HashMap::new(),
+      );
     }
     self.game_running = true;
 
@@ -147,6 +154,7 @@ impl GameState {
     self.small_blind = small_blind;
 
     // Deal new cards to players
+    let mut player_cards: HashMap<Uuid, GameMessage> = HashMap::new();
     for player in self.players.iter_mut() {
       // Add blinds to the pot and deduct from players' cash
       if player.id == small_blind {
@@ -160,9 +168,12 @@ impl GameState {
       }
 
       player.cards = [self.deck.pop().unwrap(), self.deck.pop().unwrap()];
-      msgs.push(GameMessage::YourCards(YourCards {
-        cards: player.cards,
-      }));
+      player_cards.insert(
+        player.id,
+        GameMessage::YourCards(YourCards {
+          cards: player.cards,
+        }),
+      );
     }
 
     msgs.insert(0, GameMessage::GameStarted(self.game_info()));
@@ -171,7 +182,7 @@ impl GameState {
       id: self.current_player,
     }));
 
-    msgs
+    (msgs, player_cards)
   }
 
   pub fn player_leaves(&mut self, player: Uuid) -> Vec<GameMessage> {
@@ -199,15 +210,7 @@ impl GameState {
 
     if self.current_player == player {
       // If the current player leaves, find the next player
-      self.current_player = self
-        .players
-        .iter()
-        .cycle()
-        .skip_while(|&p| p.id != self.current_player)
-        .skip(1)
-        .find(|p| !p.folded)
-        .map(|p| p.id)
-        .unwrap();
+      self.next_player();
 
       msgs.push(GameMessage::PlayerTurn(PlayerTurn {
         id: self.current_player,
@@ -245,22 +248,21 @@ impl GameState {
     let mut msgs = Vec::new();
     match cmd {
       GameCommand::Call => {
-        if previous > current.cash + current.bet {
-          return vec![GameMessage::InvalidCommand(InvalidCommand {
-            message: "You don't have enough cash to call".to_string(),
-          })];
-        }
         if previous == current.bet {
           return vec![GameMessage::InvalidCommand(InvalidCommand {
             message: "You must raise or check".to_string(),
           })];
         }
-        current.cash -= previous - current.bet;
-        current.bet = previous;
-        self.pot += previous - current.bet;
-        self.players_checked += 1;
+        let call_diff = (previous - current.bet).min(current.cash);
+        current.cash -= call_diff;
+        current.bet += call_diff;
+        self.pot += call_diff;
+        if current.cash != 0 {
+          self.players_checked += 1;
+        }
         msgs.extend(self.check_next_round());
         self.previous_player = self.current_player;
+        msgs.extend(self.check_skip_rounds());
       }
       GameCommand::Check => {
         if previous > current.bet {
@@ -294,7 +296,8 @@ impl GameState {
         current.bet += amount + call_diff;
         self.pot += amount + call_diff;
         self.previous_player = self.current_player;
-        self.players_checked = 0;
+        self.players_checked = 1;
+        msgs.extend(self.check_skip_rounds());
       }
       _ => unreachable!("All other commands should be handled in the room"),
     }
@@ -304,15 +307,7 @@ impl GameState {
       id: self.current_player,
     }));
 
-    self.current_player = self
-      .players
-      .iter()
-      .cycle()
-      .skip_while(|&p| p.id != self.current_player)
-      .skip(1)
-      .find(|&p| !p.folded)
-      .map(|p| p.id)
-      .unwrap();
+    self.next_player();
 
     if !self.game_ended && self.game_running {
       msgs.push(GameMessage::PlayerTurn(PlayerTurn {
@@ -323,8 +318,47 @@ impl GameState {
     msgs
   }
 
+  /// Skips rounds if only one player is not all in
+  fn check_skip_rounds(&mut self) -> Vec<GameMessage> {
+    if self
+      .players
+      .iter()
+      .filter(|p| !p.folded && p.cash > 0)
+      .count()
+      != 1
+    {
+      return vec![];
+    }
+
+    let mut msgs = Vec::new();
+    while self.game_running {
+      self.players_checked = 1;
+      msgs.extend(self.check_next_round());
+    }
+
+    msgs
+  }
+
+  fn next_player(&mut self) {
+    self.current_player = self
+      .players
+      .iter()
+      .cycle()
+      .skip_while(|&p| p.id != self.current_player)
+      .skip(1)
+      .find(|&p| !p.folded && p.cash > 0)
+      .map(|p| p.id)
+      .unwrap();
+  }
+
   fn check_next_round(&mut self) -> Vec<GameMessage> {
-    if self.players_checked == self.players.iter().filter(|p| !p.folded).count() {
+    if self.players_checked
+      == self
+        .players
+        .iter()
+        .filter(|p| !p.folded && p.cash > 0)
+        .count()
+    {
       if self.revealed_cards.len() < 5 {
         let mut msgs = Vec::new();
         if self.revealed_cards.is_empty() {
@@ -382,11 +416,61 @@ impl GameState {
         }
       }
 
-      let pot = self.pot / winners.len() as i32;
+      let mut pot = self.pot;
+      let mut winnings = HashMap::new();
 
+      //first give every winner their bet back
       for player in self.players.iter_mut() {
         if winners.contains(&player.id) {
-          player.cash += pot;
+          player.cash += player.bet;
+          pot -= player.bet;
+          winnings.insert(player.id, player.bet);
+        }
+      }
+
+      let mut winners_by_bet = self
+        .players
+        .iter()
+        .filter(|p| winners.contains(&p.id))
+        .copied()
+        .collect::<Vec<_>>();
+      winners_by_bet.sort_by_key(|p| p.bet);
+      winners_by_bet.reverse();
+
+      let winners_count = winners.len() as i32;
+      let looser_count = self.players.len() as i32 - winners_count;
+
+      while let Some(id) = winners_by_bet.pop().map(|p| p.id) {
+        let player = self.players.iter_mut().find(|p| p.id == id).unwrap();
+
+        let pot_per_player = pot / winners.len() as i32;
+        let pot_per_player_from_each_looser = pot_per_player / looser_count;
+
+        // If the player is all in, they can only win as much as they bet
+        if player.cash == 0 && player.bet < pot_per_player_from_each_looser {
+          player.cash += player.bet * looser_count;
+          pot -= player.bet * looser_count;
+          winnings
+            .entry(id)
+            .and_modify(|w| *w += player.bet * looser_count);
+        } else {
+          player.cash += pot_per_player;
+          pot -= pot_per_player;
+          winnings.entry(id).and_modify(|w| *w += pot_per_player);
+        }
+      }
+
+      while pot > 0 {
+        for player in self.players.iter_mut() {
+          if !winners.contains(&player.id) {
+            continue;
+          }
+          player.cash += 1;
+          pot -= 1;
+          winnings.entry(player.id).and_modify(|w| *w += 1);
+          if pot <= 0 {
+            break;
+          }
         }
       }
 
@@ -399,7 +483,7 @@ impl GameState {
               id,
               cards: Some(player.cards),
               best_hand: Some(hand.clone()),
-              winnings: if winners.contains(&id) { pot } else { 0 },
+              winnings: winnings.get(&id).copied().unwrap_or(0),
             }
           })
           .collect(),
