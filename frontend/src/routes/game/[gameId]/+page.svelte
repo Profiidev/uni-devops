@@ -14,7 +14,8 @@
     type PlayerGameInfo,
     type Message,
     type GameState,
-    PlayerActionType
+    PlayerActionType,
+    type GameEnded
   } from '$lib/ws/message.svelte';
   import { userInfo } from '$lib/user.svelte.js';
   import { CommandType } from '$lib/ws/command.svelte.js';
@@ -53,6 +54,7 @@
   let pot: number = $state(0);
   let callAmount: number = $state(0);
   let roundEnded: RoundEnded | null = $state(null);
+  let gameEnded: GameEnded | null = $state(null);
 
   function handleIncoming(data: Message) {
     console.log('Received data:', data);
@@ -70,6 +72,7 @@
         break;
       case MessageType.GameStarted:
         roundEnded = null;
+        gameEnded = null;
         gameState = data;
         if (roomInfo) {
           callAmount = roomInfo.small_blind * 2;
@@ -144,16 +147,16 @@
             (p) => p.id === player.id
           );
           if (playerInGameState) {
-            //playerInGameState.cash += player.winnings;
+            playerInGameState.cash += player.winnings;
             playerInGameState.bet = 0;
           }
         }
         break;
       case MessageType.GameEnded:
-        // TODO handle game end
+        gameEnded = data;
         break;
       case MessageType.BackToLobby:
-        // TODO not yet needed
+        if (roomInfo) roomInfo.game_running = false;
         break;
     }
   }
@@ -204,6 +207,7 @@
             ?.best_hand || null}
           winnings={roundEnded?.players.find((p) => p.id === player.id)
             ?.winnings || null}
+          winner={gameEnded?.winner === player.id}
         />
       {/each}
     {/if}
@@ -233,6 +237,7 @@
           ?.best_hand || null}
         winnings={roundEnded?.players.find((p) => p.id === ownPlayerInfo?.id)
           ?.winnings || null}
+        winner={gameEnded?.winner === ownPlayerInfo?.id}
       />
     {/if}
   </div>
@@ -287,18 +292,19 @@
           </button>
         </div>
       {/if}
-    {:else}
-      <button
-        onclick={() => sendWebSocketMessage({ type: CommandType.NextRound })}
-      >
-        Next Round
-      </button>
-      {#if roomInfo?.owner === ownPlayerInfo?.id}
+    {:else if roomInfo?.owner === ownPlayerInfo?.id}
+      {#if gameEnded}
         <button
           onclick={() =>
             sendWebSocketMessage({ type: CommandType.BackToLobby })}
         >
           Back to Lobby
+        </button>
+      {:else}
+        <button
+          onclick={() => sendWebSocketMessage({ type: CommandType.NextRound })}
+        >
+          Next Round
         </button>
       {/if}
     {/if}

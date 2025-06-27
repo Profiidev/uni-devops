@@ -2,13 +2,14 @@
   import type { Card, Hand, PlayerGameInfo } from '$lib/ws/message.svelte';
   import CardComponent from './cardComponent.svelte';
 
-  const { name, playerGameInfo, cards, turn, hand, winnings } = $props<{
+  const { name, playerGameInfo, cards, turn, hand, winnings, winner } = $props<{
     name: String;
     playerGameInfo: PlayerGameInfo;
     cards: Card[] | undefined[];
     turn: boolean;
     hand: Hand | null;
     winnings: number | null;
+    winner: boolean;
   }>();
 
   const endInfo: () => String = $derived(() => {
@@ -26,9 +27,9 @@
 </script>
 
 <div
-  class="player {turn ? 'playerTurn' : ''} {playerGameInfo?.folded
-    ? 'folded'
-    : ''}"
+  class="player {turn ? 'playerTurn' : ''} {winner
+    ? 'gameWon'
+    : ''} {playerGameInfo?.folded ? 'folded' : ''}"
 >
   {#if !playerGameInfo?.folded}
     <div class="cardContainer">
@@ -65,6 +66,16 @@
 
   .playerTurn {
     border: 2px dashed var(--primary-color);
+  }
+
+  .gameWon {
+    outline: 2px solid gold;
+    border: none;
+    outline-offset: 30px;
+    .name {
+      background-color: gold;
+      color: var(--surface-background);
+    }
   }
 
   .playerDetails {
