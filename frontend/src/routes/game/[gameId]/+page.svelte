@@ -43,7 +43,6 @@
   });
 
   let ownCards: Card[] = $state([]);
-  let raiseAmount: number = $state(1);
   let paddedCards: () => Card[] | undefined[] = $derived(() => {
     if (!gameState) return Array(5).fill(undefined);
     return Array.from(
@@ -51,8 +50,16 @@
       (_, i) => gameState?.revealed_cards[i] || undefined
     );
   });
+  let raiseAmount: number = $state(1);
   let pot: number = $state(0);
   let callAmount: number = $state(0);
+  let maxRaiseAmount: () => number = $derived(() => {
+    if (!ownPlayer()) return 0;
+    return Math.max(
+      (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount,
+      0
+    );
+  });
   let roundEnded: RoundEnded | null = $state(null);
   let gameEnded: GameEnded | null = $state(null);
 
@@ -126,14 +133,7 @@
             player.bet += difference;
             player.cash -= difference;
             pot += difference;
-            if (
-              ownPlayer() &&
-              (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount <
-                raiseAmount
-            ) {
-              raiseAmount =
-                (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount;
-            }
+            raiseAmount = Math.min(raiseAmount, maxRaiseAmount());
             break;
         }
         break;
@@ -269,26 +269,14 @@
             type="range"
             bind:value={raiseAmount}
             min="1"
-            max={Math.min(
-              Math.max(
-                (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount,
-                0
-              ),
-              ownPlayer()?.cash || 0
-            )}
+            max={maxRaiseAmount()}
             step="1"
           />
           <input
             type="number"
             bind:value={raiseAmount}
             min="1"
-            max={Math.min(
-              Math.max(
-                (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount,
-                0
-              ),
-              ownPlayer()?.cash || 0
-            )}
+            max={maxRaiseAmount()}
           />
           <button
             onclick={() => {
