@@ -389,12 +389,12 @@
       }
 
       .possibleToRaise {
-          opacity: 1;
+        opacity: 1;
 
-          button {
-            cursor: pointer;
-          }
+        button {
+          cursor: pointer;
         }
+      }
     }
 
     .yourTurn {
