@@ -1,4 +1,4 @@
-import type { Command } from "./command.svelte";
+import type { Command } from './command.svelte';
 
 let socket: WebSocket | null = null;
 
