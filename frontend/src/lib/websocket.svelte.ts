@@ -1,5 +1,3 @@
-import { PUBLIC_BACKEND_URL } from '$env/static/public';
-
 let socket: WebSocket | null = null;
 
 export function connectWebSocket(
@@ -12,7 +10,7 @@ export function connectWebSocket(
   }
 
   console.log(`Connecting to WebSocket for game ID: ${id}`);
-  socket = new WebSocket(`${PUBLIC_BACKEND_URL}/game/ws/${id}`);
+  socket = new WebSocket(`/backend/game/ws/${id}`);
 
   socket.onopen = () => {
     console.log('WebSocket connection opened');
