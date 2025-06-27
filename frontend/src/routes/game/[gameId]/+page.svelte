@@ -266,7 +266,6 @@
 
         <div class="raiseContainer">
           <input
-            class="raiseSlider"
             type="range"
             bind:value={raiseAmount}
             min="1"
@@ -275,11 +274,22 @@
                 (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount,
                 0
               ),
-              150
+              ownPlayer()?.cash || 0
             )}
             step="1"
           />
-          <p class="raiseNumber">{raiseAmount}</p>
+          <input
+            type="number"
+            bind:value={raiseAmount}
+            min="1"
+            max={Math.min(
+              Math.max(
+                (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount,
+                0
+              ),
+              ownPlayer()?.cash || 0
+            )}
+          />
           <button
             onclick={() => {
               sendWebSocketMessage({
@@ -369,10 +379,5 @@
     flex-direction: row;
     align-items: center;
     gap: 10px;
-  }
-
-  .raiseNumber {
-    width: 28px;
-    text-align: center;
   }
 </style>

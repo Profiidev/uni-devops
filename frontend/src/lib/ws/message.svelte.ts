@@ -125,7 +125,7 @@ export type RoundEnded = {
 
 export type PlayerEndedInfo = {
   id: string; // uuid
-  cards?: [Card, Card]; // Only present if the player did not fold and more than 2 players are left because only then the cards are revealed
+  cards?: [Card, Card]; // Only present if the player did not fold and more than 1 player is left because only then the cards are revealed
   best_hand?: Hand; // Same as cards
   winnings: number;
 };
