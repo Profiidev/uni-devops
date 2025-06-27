@@ -1,3 +1,5 @@
+import type { Command } from "./command.svelte";
+
 let socket: WebSocket | null = null;
 
 export function connectWebSocket(
@@ -35,7 +37,7 @@ export function connectWebSocket(
   };
 }
 
-export function sendWebSocketMessage(data: any): void {
+export function sendWebSocketMessage(data: Command): void {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify(data));
   } else {

@@ -4,7 +4,7 @@
     connectWebSocket,
     closeWebSocket,
     sendWebSocketMessage
-  } from '$lib/websocket.svelte';
+  } from '$lib/ws/websocket.svelte';
   import {
     MessageType,
     type RoomInfo,

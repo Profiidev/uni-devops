@@ -5,11 +5,15 @@ export const load = async ({ cookies, url }) => {
 
   if (url.pathname !== '/login') {
     if (!cookie) {
-      throw redirect(302, '/login');
+      throw redirect(
+        302,
+        `/login?redirectTo=${encodeURIComponent(url.pathname)}`
+      );
     }
   } else {
     if (cookie) {
-      throw redirect(302, '/');
+      const redirectTo = url.searchParams.get('redirectTo') || '/';
+      throw redirect(302, redirectTo);
     }
   }
 };

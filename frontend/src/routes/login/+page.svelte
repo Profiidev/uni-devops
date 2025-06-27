@@ -1,18 +1,25 @@
 <script lang="ts">
   import { password_login, password_register } from '$lib/password.svelte';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
+  import { page } from '$app/state';
 
   let loginToggle = $state(true);
   let email = $state('');
   let name = $state('');
   let password = $state('');
   let error = $state('');
+  let redirect = '/';
+
+  onMount(() => {
+    redirect = page.url.searchParams.get('redirectTo') || '/';
+  });
 
   const register = async () => {
     let res = await password_register(email, password, name);
     if (res === undefined) {
       console.log('Registration successful');
-      goto('/');
+      goto(redirect);
     } else {
       console.log('There was an Error while signing up:', res);
       error =
@@ -24,7 +31,7 @@
     let res = await password_login(email, password);
     if (res === undefined) {
       console.log('Login successful');
-      goto('/');
+      goto(redirect);
     } else {
       console.log('There was an Error while signing in:', res);
       error = 'There was an error during login. Please check your input.';
