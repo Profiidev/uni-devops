@@ -31,12 +31,12 @@
   const endInfo: () => String = $derived(() => {
     let info = '';
     if (hand) {
-      info += `${hand.type}`;
+      info = hand.type.replace(/([A-Z])/g, ' $1').trim();
       if (winnings) {
         info += `: +$${winnings}`;
       }
     } else if (winnings) {
-      info += `+$${winnings}`;
+      info = `+$${winnings}`;
     }
     return info;
   });
