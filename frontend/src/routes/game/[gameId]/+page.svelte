@@ -15,7 +15,8 @@
     type Message,
     type GameState,
     PlayerActionType,
-    type GameEnded
+    type GameEnded,
+    type PlayerAction
   } from '$lib/ws/message.svelte';
   import { userInfo } from '$lib/user.svelte.js';
   import { CommandType } from '$lib/ws/command.svelte.js';
@@ -60,6 +61,7 @@
       0
     );
   });
+  let lastPlayerAction: { action: PlayerAction; id: string }[] = $state([]);
   let roundEnded: RoundEnded | null = $state(null);
   let gameEnded: GameEnded | null = $state(null);
 
@@ -104,6 +106,9 @@
       case MessageType.PlayerTurn:
         if (!gameState) break;
         gameState.current_player = data.id;
+        lastPlayerAction = lastPlayerAction.filter(
+          (action) => action.id !== data.id
+        );
         break;
       case MessageType.YourCards:
         ownCards = data.cards;
@@ -119,6 +124,10 @@
         if (!gameState) break;
         const player = gameState.players.find((p) => p.id === data.id);
         if (!player) break;
+        lastPlayerAction = lastPlayerAction.filter(
+          (action) => action.id !== data.id
+        );
+        lastPlayerAction.push({ action: data.action, id: data.id });
         switch (data.action.type) {
           case PlayerActionType.Fold:
             player.folded = true;
@@ -142,6 +151,7 @@
         roundEnded = data;
         pot = 0;
         gameState.current_player = 'null';
+        lastPlayerAction = [];
         for (const player of roundEnded.players) {
           const playerInGameState = gameState.players.find(
             (p) => p.id === player.id
@@ -208,6 +218,8 @@
           winnings={roundEnded?.players.find((p) => p.id === player.id)
             ?.winnings || null}
           winner={gameEnded?.winner === player.id}
+          lastAction={lastPlayerAction.find((action) => action.id === player.id)
+            ?.action || null}
         />
       {/each}
     {/if}
@@ -238,6 +250,9 @@
         winnings={roundEnded?.players.find((p) => p.id === ownPlayerInfo?.id)
           ?.winnings || null}
         winner={gameEnded?.winner === ownPlayerInfo?.id}
+        lastAction={lastPlayerAction.find(
+          (action) => action.id === ownPlayerInfo?.id
+        )?.action || null}
       />
     {/if}
   </div>

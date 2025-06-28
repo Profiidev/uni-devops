@@ -1,8 +1,23 @@
 <script lang="ts">
-  import type { Card, Hand, PlayerGameInfo } from '$lib/ws/message.svelte';
+  import {
+    PlayerActionType,
+    type Card,
+    type Hand,
+    type PlayerAction,
+    type PlayerGameInfo
+  } from '$lib/ws/message.svelte';
   import CardComponent from './cardComponent.svelte';
 
-  const { name, playerGameInfo, cards, turn, hand, winnings, winner } = $props<{
+  const {
+    name,
+    playerGameInfo,
+    cards,
+    turn,
+    hand,
+    winnings,
+    winner,
+    lastAction
+  } = $props<{
     name: String;
     playerGameInfo: PlayerGameInfo;
     cards: Card[] | undefined[];
@@ -10,6 +25,7 @@
     hand: Hand | null;
     winnings: number | null;
     winner: boolean;
+    lastAction: PlayerAction | null;
   }>();
 
   const endInfo: () => String = $derived(() => {
@@ -17,7 +33,7 @@
     if (hand) {
       info += `${hand.type}`;
       if (winnings) {
-        info += `: +${winnings}`;
+        info += `: +$${winnings}`;
       }
     } else if (winnings) {
       info += `+$${winnings}`;
@@ -46,7 +62,19 @@
     <h1 class="name">{name}</h1>
     <p class="cash">${playerGameInfo.cash}</p>
   </div>
-  <p class="additionalDetails {winnings ? 'winner' : ''}">{endInfo()}</p>
+  <!-- <p class="additionalDetails {winnings ? 'winner' : ''}">{endInfo()}</p> -->
+  {#if endInfo()}
+    <p class="speachBubble {winnings ? 'winner' : ''}">
+      {endInfo()}
+    </p>
+  {:else if lastAction}
+    <p class="speachBubble">
+      {lastAction.type}
+      {#if lastAction.type === PlayerActionType.Raise}
+        ${lastAction.amount}
+      {/if}
+    </p>
+  {/if}
 </div>
 
 <style>
@@ -56,7 +84,7 @@
     align-items: center;
     flex-direction: column;
     width: fit-content;
-    margin: clamp(45px, 11vw, 110px) 20px -10px 20px;
+    margin: clamp(45px, 11vw, 110px) 20px 20px 20px;
     font-size: large;
     padding: 30px;
     z-index: -1;
@@ -134,14 +162,36 @@
     font-size: x-large;
   }
 
-  .additionalDetails {
-    position: absolute;
-    z-index: 2;
-    transform: translateY(50px);
-    font-size: large;
-  }
-
   .winner {
     color: var(--primary-color);
+  }
+
+  .speachBubble {
+    position: absolute;
+    font-family: sans-serif;
+    font-size: large;
+    line-height: 24px;
+    min-width: 100px;
+    background: #fff;
+    border-radius: 40px;
+    padding: 4px;
+    text-align: center;
+    color: #000;
+    margin-top: 40px;
+    transform: translateY(55px);
+  }
+
+  .speachBubble::before {
+    content: '';
+    width: 0px;
+    height: 0px;
+    position: absolute;
+    border-left: 24px solid #fff;
+    border-right: 12px solid transparent;
+    border-bottom: 12px solid #fff;
+    border-top: 20px solid transparent;
+    left: 32px;
+    top: -24px;
+    z-index: 100;
   }
 </style>
