@@ -348,7 +348,10 @@
     {/if}
   </div>
   <p>only there for testing:</p>
-  <div class="tmpOptions" style="display: flex; gap: 20px; flex-wrap: wrap; margin: 20px;">
+  <div
+    class="tmpOptions"
+    style="display: flex; gap: 20px; flex-wrap: wrap; margin: 20px;"
+  >
     <button
       onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}
       >Start Game</button

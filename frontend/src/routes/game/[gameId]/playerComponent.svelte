@@ -75,9 +75,11 @@
     </p>
   {/if}
   <div class="sideDisplay">
-    <p>{#if playerGameInfo.bet > 0}
-      Bet: ${playerGameInfo.bet}
-    {/if}</p>
+    <p>
+      {#if playerGameInfo.bet > 0}
+        Bet: ${playerGameInfo.bet}
+      {/if}
+    </p>
   </div>
 </div>
 
