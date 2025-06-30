@@ -62,7 +62,6 @@
     <h1 class="name">{name}</h1>
     <p class="cash">${playerGameInfo.cash}</p>
   </div>
-  <!-- <p class="additionalDetails {winnings ? 'winner' : ''}">{endInfo()}</p> -->
   {#if endInfo()}
     <p class="speachBubble {winnings ? 'winner' : ''}">
       {endInfo()}
@@ -75,6 +74,11 @@
       {/if}
     </p>
   {/if}
+  <div class="sideDisplay">
+    <p>{#if playerGameInfo.bet > 0}
+      Bet: ${playerGameInfo.bet}
+    {/if}</p>
+  </div>
 </div>
 
 <style>
@@ -168,15 +172,14 @@
 
   .speachBubble {
     position: absolute;
-    font-family: sans-serif;
     font-size: large;
     line-height: 24px;
     min-width: 100px;
-    background: #fff;
+    background: var(--text-color);
     border-radius: 40px;
     padding: 4px;
     text-align: center;
-    color: #000;
+    color: var(--surface-background);
     margin-top: 40px;
     transform: translateY(55px);
   }
@@ -186,12 +189,16 @@
     width: 0px;
     height: 0px;
     position: absolute;
-    border-left: 24px solid #fff;
+    border-left: 24px solid var(--text-color);
     border-right: 12px solid transparent;
-    border-bottom: 12px solid #fff;
+    border-bottom: 12px solid var(--text-color);
     border-top: 20px solid transparent;
     left: 32px;
     top: -24px;
-    z-index: 100;
+  }
+
+  .sideDisplay {
+    position: absolute;
+    transform: translateX(140px);
   }
 </style>

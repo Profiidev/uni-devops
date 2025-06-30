@@ -44,6 +44,7 @@ export type RoomInfo = {
 export type PlayerInfo = {
   id: string; // uuid
   name: string;
+  online: boolean;
 };
 
 export type InvalidCommand = {

@@ -27,17 +27,20 @@
   const { gameId } = data;
 
   let roomInfo: RoomInfo | null = $state(null);
-  let ownPlayerInfo: PlayerInfo | null = $state(null);
+  let ownPlayerId: string | null = $state(null);
   let gameState: GameState | null = $state(null);
   let ownPlayer: () => PlayerGameInfo | null = $derived(() => {
-    if (!gameState || !ownPlayerInfo) return null;
-    const ownId = ownPlayerInfo.id;
-    return gameState.players.find((p) => p.id === ownId) || null;
+    if (!gameState || !ownPlayerId) return null;
+    const ownId = ownPlayerId;
+    const ownPlayer = gameState.players.find((p) => p.id === ownId);
+    if (ownPlayer) return ownPlayer;
+    return gameState.players[0];
   });
   let enemyPlayer: () => PlayerGameInfo[] = $derived(() => {
-    if (!gameState || !ownPlayerInfo) return [];
+    const playerBottom = ownPlayer();
+    if (!gameState || !playerBottom) return [];
     const ps = gameState.players;
-    const ownId = ownPlayerInfo.id;
+    const ownId = playerBottom.id;
     const index = ps.findIndex((p) => p.id === ownId);
     if (index === -1) return [];
     return [...ps.slice(index + 1), ...ps.slice(0, index)];
@@ -71,6 +74,7 @@
     switch (data.type) {
       case MessageType.RoomInfo:
         roomInfo = data;
+        for (const player of roomInfo.players) player.online = true;
         break;
       case MessageType.InvalidCommand:
         console.error('Invalid command received:', data);
@@ -91,17 +95,21 @@
         break;
       case MessageType.PlayerJoined:
         if (!roomInfo) break;
-        if (roomInfo.players.some((p) => p.id === data.id)) break;
+        const playerJoined = roomInfo.players.find((p) => p.id === data.id);
+        if (playerJoined) {
+          playerJoined.name = data.name;
+          playerJoined.online = true;
+          break;
+        }
         roomInfo.players = [
           ...(roomInfo.players || []),
-          { id: data.id, name: data.name }
+          { id: data.id, name: data.name, online: true }
         ];
         break;
       case MessageType.PlayerLeft:
         if (!roomInfo) break;
-        roomInfo.players = roomInfo.players.filter(
-          (p: PlayerInfo) => p.id !== data.id
-        );
+        const playerLeft = roomInfo.players.find((p) => p.id === data.id);
+        if (playerLeft) playerLeft.online = false;
         break;
       case MessageType.PlayerTurn:
         if (!gameState) break;
@@ -174,8 +182,8 @@
   onMount(() => {
     userInfo().then((playerInfo) => {
       if (playerInfo !== null) {
-        ownPlayerInfo = playerInfo as PlayerInfo;
-        console.log('Own ID:', ownPlayerInfo.id);
+        ownPlayerId = (playerInfo as PlayerInfo).id;
+        console.log('Own ID:', ownPlayerId);
         connectWebSocket(gameId, handleIncoming);
       }
     });
@@ -191,9 +199,11 @@
 {:else if !roomInfo.game_running}
   <h2>Player:</h2>
   {#each roomInfo.players as player}
-    <p>{player.name}</p>
+    {#if player.online}
+      <p>{player.name}</p>
+    {/if}
   {/each}
-  {#if roomInfo.owner === ownPlayerInfo?.id}
+  {#if roomInfo.owner === ownPlayerId}
     <button
       onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}
     >
@@ -239,29 +249,32 @@
   </div>
 
   <div class="ownPlayerContainer">
-    {#if ownPlayer() && ownPlayerInfo}
-      <PlayerComponent
-        name={ownPlayerInfo?.name || 'You'}
-        playerGameInfo={ownPlayer()!}
-        cards={ownCards}
-        turn={gameState?.current_player === ownPlayerInfo.id}
-        hand={roundEnded?.players.find((p) => p.id === ownPlayerInfo?.id)
-          ?.best_hand || null}
-        winnings={roundEnded?.players.find((p) => p.id === ownPlayerInfo?.id)
-          ?.winnings || null}
-        winner={gameEnded?.winner === ownPlayerInfo?.id}
-        lastAction={lastPlayerAction.find(
-          (action) => action.id === ownPlayerInfo?.id
-        )?.action || null}
-      />
+    {#if ownPlayerId}
+      {@const player = ownPlayer()}
+      {#if player}
+        <PlayerComponent
+          name={roomInfo.players.find((p) => p.id === player.id)?.name ||
+            'Unknown Player'}
+          playerGameInfo={player}
+          cards={ownCards || [undefined, undefined]}
+          turn={gameState?.current_player === player.id}
+          hand={roundEnded?.players.find((p) => p.id === player.id)
+            ?.best_hand || null}
+          winnings={roundEnded?.players.find((p) => p.id === player.id)
+            ?.winnings || null}
+          winner={gameEnded?.winner === player.id}
+          lastAction={lastPlayerAction.find((action) => action.id === player.id)
+            ?.action || null}
+        />
+      {/if}
     {/if}
   </div>
 
   <div class="actions">
     {#if !roundEnded}
-      {#if !ownPlayer()?.folded}
+      {#if !ownPlayer()?.folded && ownPlayer()?.id === ownPlayerId}
         <div
-          class="gameActions {gameState?.current_player === ownPlayerInfo?.id
+          class="gameActions {gameState?.current_player === ownPlayerId
             ? 'yourTurn'
             : ''}"
         >
@@ -317,7 +330,7 @@
           </div>
         </div>
       {/if}
-    {:else if roomInfo?.owner === ownPlayerInfo?.id}
+    {:else if roomInfo?.owner === ownPlayerId}
       {#if gameEnded}
         <button
           onclick={() =>
@@ -333,6 +346,33 @@
         </button>
       {/if}
     {/if}
+  </div>
+  <p>only there for testing:</p>
+  <div class="tmpOptions" style="display: flex; gap: 20px; flex-wrap: wrap; margin: 20px;">
+    <button
+      onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}
+      >Start Game</button
+    >
+    <button
+      onclick={() => sendWebSocketMessage({ type: CommandType.NextRound })}
+    >
+      Next Round
+    </button>
+    <button
+      onclick={() => sendWebSocketMessage({ type: CommandType.BackToLobby })}
+    >
+      Back to Lobby
+    </button>
+    <button
+      onclick={() => sendWebSocketMessage({ type: CommandType.GameInfo })}
+    >
+      Refresh Game Info
+    </button>
+    <button
+      onclick={() => sendWebSocketMessage({ type: CommandType.RoomInfo })}
+    >
+      Refresh Room Info
+    </button>
   </div>
 {:else}
   <p>Loading game information...</p>
