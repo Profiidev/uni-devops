@@ -200,22 +200,37 @@
 {:else if !roomInfo.game_running}
   <main>
     <h1>Dealing With DevOps</h1>
-    <div class="middle">
-      <h2>Player:</h2>
 
-      {#each roomInfo.players as player}
-        {#if player.online}
-          <p>{player.name}</p>
+    <div class="middle">
+      <h2>Invite:</h2>
+      <div class="mid">
+        <div class="copyLink">
+          <button
+            onclick={() => navigator.clipboard.writeText(window.location.href)}
+            >copy Link</button
+          >
+          <p>{window.location.href}</p>
+        </div>
+      </div>
+
+      <h2>Player:</h2>
+      <div class="mid">
+        {#each roomInfo.players as player}
+          {#if player.online}
+            <p>{player.name}</p>
+          {/if}
+        {/each}
+
+        {#if roomInfo.owner === ownPlayerId}
+          <button
+            class="primaryButton"
+            onclick={() =>
+              sendWebSocketMessage({ type: CommandType.StartGame })}
+          >
+            Start Game
+          </button>
         {/if}
-      {/each}
-      {#if roomInfo.owner === ownPlayerId}
-        <button
-          class="primaryButton"
-          onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}
-        >
-          Start Game
-        </button>
-      {/if}
+      </div>
     </div>
   </main>
 {:else if gameState}
@@ -481,15 +496,20 @@
   }
 
   .middle {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
     border-radius: 15px;
     padding: 3.5rem;
     gap: 1rem;
     background-color: var(--surface-background);
     width: min(90vw, 700px);
+  }
+
+  .mid {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    margin: 10px;
+    gap: 10px;
   }
 
   h1 {
@@ -511,5 +531,28 @@
     border: none;
     border-radius: 4px;
     cursor: pointer;
+  }
+
+  .copyLink {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    border: 2px solid var(--text-color);
+    border-radius: 10px;
+    align-items: center;
+    width: fit-content;
+
+    button {
+      cursor: pointer;
+      background-color: var(--primary-color);
+      padding: 10px;
+      border-radius: 10px;
+    }
+
+    p {
+      max-width: 220px;
+      overflow-y: scroll;
+      white-space: nowrap;
+    }
   }
 </style>
