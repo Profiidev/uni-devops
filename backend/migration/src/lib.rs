@@ -4,7 +4,6 @@ mod m20250507_180655_create_key_table;
 mod m20250507_180700_create_invalid_jwt_table;
 mod m20250507_191617_create_user_table;
 mod m20250510_081004_create_room_table;
-mod m20250510_081640_create_player_table;
 
 pub struct Migrator;
 
@@ -16,7 +15,6 @@ impl MigratorTrait for Migrator {
       Box::new(m20250507_180700_create_invalid_jwt_table::Migration),
       Box::new(m20250507_191617_create_user_table::Migration),
       Box::new(m20250510_081004_create_room_table::Migration),
-      Box::new(m20250510_081640_create_player_table::Migration),
     ]
   }
 }

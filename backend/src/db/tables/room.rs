@@ -1,5 +1,5 @@
 use entity::{prelude::*, room};
-use sea_orm::{ActiveValue::Set, prelude::*};
+use sea_orm::{ActiveValue::Set, IntoActiveModel, prelude::*};
 
 pub struct RoomTable<'db> {
   db: &'db DatabaseConnection,
@@ -48,5 +48,12 @@ impl<'db> RoomTable<'db> {
       .one(self.db)
       .await?
       .ok_or(DbErr::RecordNotFound("Room not found".to_string()))
+  }
+
+  pub async fn set_running(&self, id: Uuid, game_running: bool) -> Result<room::Model, DbErr> {
+    let mut room = self.get(id).await?.into_active_model();
+
+    room.game_running = Set(game_running);
+    room.update(self.db).await
   }
 }

@@ -2,16 +2,20 @@ use std::collections::HashMap;
 
 use uuid::Uuid;
 
-use crate::game::ws::{
-  card::{Card, Hand},
-  commands::{GameCommand, Raise},
-  messages::{
-    GameEnded, GameInfo, GameMessage, InvalidCommand, PlayerActed, PlayerAction, PlayerEndedInfo,
-    PlayerGameInfo, PlayerTurn, RoundEnded, YourCards,
+use crate::{
+  db::tables::Tables,
+  game::ws::{
+    card::{Card, Hand},
+    commands::{GameCommand, Raise},
+    messages::{
+      GameEnded, GameInfo, GameMessage, InvalidCommand, PlayerActed, PlayerAction, PlayerEndedInfo,
+      PlayerGameInfo, PlayerTurn, RoundEnded, YourCards,
+    },
   },
 };
 
 pub struct GameState {
+  pub id: Uuid,
   pub previous_player: Uuid,
   pub current_player: Uuid,
   pub small_blind: Uuid,
@@ -35,7 +39,7 @@ pub struct PlayerState {
 }
 
 impl GameState {
-  pub fn init(players: Vec<Uuid>, small_blind_amount: i32, starting_cash: i32) -> Self {
+  pub fn init(id: Uuid, players: Vec<Uuid>, small_blind_amount: i32, starting_cash: i32) -> Self {
     let small_blind = players[0];
     let big_blind = players[1];
     let current_player = *players.iter().cycle().nth(2).unwrap();
@@ -63,6 +67,7 @@ impl GameState {
     }
 
     GameState {
+      id,
       small_blind,
       previous_player: big_blind,
       current_player,
@@ -194,7 +199,7 @@ impl GameState {
     (msgs, player_cards)
   }
 
-  pub fn player_leaves(&mut self, player: Uuid) -> Vec<GameMessage> {
+  pub async fn player_leaves(&mut self, player: Uuid, db: &Tables<'_>) -> Vec<GameMessage> {
     if !self.players.iter().any(|p| p.id == player) || !self.game_running {
       return vec![];
     }
@@ -213,7 +218,7 @@ impl GameState {
 
     if self.players.iter().filter(|p| !p.folded).count() == 1 {
       // If only one player remains, end the game
-      msgs.extend(self.end_game());
+      msgs.extend(self.end_game(db).await);
       return msgs;
     }
 
@@ -229,7 +234,12 @@ impl GameState {
     msgs
   }
 
-  pub fn handle_cmd(&mut self, cmd: GameCommand, player: Uuid) -> Vec<GameMessage> {
+  pub async fn handle_cmd(
+    &mut self,
+    cmd: GameCommand,
+    player: Uuid,
+    db: &Tables<'_>,
+  ) -> Vec<GameMessage> {
     if !self.game_running || self.game_ended {
       return vec![GameMessage::InvalidCommand(InvalidCommand {
         message: "Game is not running".to_string(),
@@ -272,7 +282,7 @@ impl GameState {
         current.bet += call_diff;
         self.pot += call_diff;
         self.players_checked += 1;
-        msgs.extend(self.check_next_round());
+        msgs.extend(self.check_next_round(db).await);
         self.previous_player = self.current_player;
       }
       GameCommand::Check => {
@@ -282,13 +292,13 @@ impl GameState {
           })];
         }
         self.players_checked += 1;
-        msgs.extend(self.check_next_round());
+        msgs.extend(self.check_next_round(db).await);
         self.previous_player = self.current_player;
       }
       GameCommand::Fold => {
         current.folded = true;
         if self.players.iter().filter(|p| !p.folded).count() == 1 {
-          msgs.extend(self.end_game());
+          msgs.extend(self.end_game(db).await);
         }
       }
       GameCommand::Raise(Raise { amount }) => {
@@ -340,7 +350,7 @@ impl GameState {
       .unwrap();
   }
 
-  fn check_next_round(&mut self) -> Vec<GameMessage> {
+  async fn check_next_round(&mut self, db: &Tables<'_>) -> Vec<GameMessage> {
     if self.players_checked == self.players.iter().filter(|p| !p.folded).count() {
       if self.revealed_cards.len() < 5 {
         let mut msgs = Vec::new();
@@ -364,14 +374,14 @@ impl GameState {
         self.players_checked = 0;
         return msgs;
       } else {
-        return self.end_game();
+        return self.end_game(db).await;
       }
     }
 
     vec![]
   }
 
-  fn end_game(&mut self) -> Vec<GameMessage> {
+  async fn end_game(&mut self, db: &Tables<'_>) -> Vec<GameMessage> {
     self.game_running = false;
 
     let remaining_players: Vec<_> = self.players.iter().filter(|p| !p.folded).collect();
@@ -493,6 +503,10 @@ impl GameState {
       let winner = non_broke_players[0];
       msgs.push(GameMessage::GameEnded(GameEnded { winner: winner.id }));
       self.game_ended = true;
+      db.room()
+        .set_running(self.id, false)
+        .await
+        .expect("Failed to update room state");
     }
 
     msgs
