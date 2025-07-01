@@ -37,8 +37,12 @@
 
   const createRoomClicked = async () => {
     let id = await create_Room();
-    console.log('Created room with ID:', id);
-    goto(`/game/${id}`);
+    if (id !== null) {
+      console.log('Created room with ID:', id);
+      goto(`/game/${id}`);
+    } else {
+      console.error('error creating room');
+    }
   };
 
   const deleteRoomClicked = async (roomId: string) => {
