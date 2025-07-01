@@ -110,14 +110,13 @@ impl GameState {
         HashMap::new(),
       );
     }
-    self.round_running = true;
 
     // Remove players with no cash left to continue
     self
       .players
-      .retain(|player| player.cash > self.small_blind_amount * 2);
+      .retain(|player| player.cash >= self.small_blind_amount * 2);
 
-    if self.players.len() < 2 {
+    if active_players.len() < 2 {
       return (
         vec![GameMessage::InvalidCommand(InvalidCommand {
           message: "Not enough players to start a new round".to_string(),
@@ -126,6 +125,7 @@ impl GameState {
       );
     }
 
+    self.round_running = true;
     let mut msgs = Vec::new();
 
     // Reset players' bets for the next round
@@ -153,6 +153,7 @@ impl GameState {
     let mut players_after_small_blind = self
       .players
       .iter()
+      .filter(|p| !p.folded)
       .cycle()
       .skip_while(|&p| p.id != self.small_blind)
       .skip(1)
