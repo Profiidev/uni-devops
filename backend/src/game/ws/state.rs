@@ -375,6 +375,18 @@ impl Room {
         self.game_state = Some(state);
       }
       GameCommand::NextRound => {
+        let room = db.room().get(self.id).await?;
+        if room.owner != player {
+          self
+            .send_msg_to_current_player(
+              player,
+              GameMessage::InvalidCommand(InvalidCommand {
+                message: "Only the room owner can start a new round".to_string(),
+              }),
+            )
+            .await;
+          return Ok(());
+        }
         if let Some(game_state) = &mut self.game_state {
           let players = self.players.lock().await;
           let active_players: Vec<Uuid> = players.keys().copied().collect();
