@@ -20,7 +20,6 @@ impl<'db> RoomTable<'db> {
       id: Set(Uuid::new_v4()),
       owner: Set(owner),
       created_at: Set(chrono::Utc::now().naive_utc()),
-      game_running: Set(false),
       starting_cash: Set(starting_cash),
       small_blind: Set(small_blind),
     };
@@ -48,12 +47,5 @@ impl<'db> RoomTable<'db> {
       .one(self.db)
       .await?
       .ok_or(DbErr::RecordNotFound("Room not found".to_string()))
-  }
-
-  pub async fn set_running(&self, id: Uuid, game_running: bool) -> Result<room::Model, DbErr> {
-    let mut room = self.get(id).await?.into_active_model();
-
-    room.game_running = Set(game_running);
-    room.update(self.db).await
   }
 }

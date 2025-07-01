@@ -174,12 +174,12 @@ impl GlobalGameState {
     Ok((receiver, room_arc.clone()))
   }
 
-  pub async fn leave_room(&self, id: Uuid, player: Uuid, db: &Tables<'_>) {
+  pub async fn leave_room(&self, id: Uuid, player: Uuid) {
     let mut rooms = self.rooms.lock().await;
     if let Some(room) = rooms.get(&id) {
       let mut room = room.lock().await;
       if let Some(game_state) = &mut room.game_state {
-        for msg in game_state.player_leaves(player, db).await {
+        for msg in game_state.player_leaves(player) {
           room.send_msg_to_all(msg).await;
         }
       }
@@ -206,6 +206,15 @@ impl GlobalGameState {
           .await;
       }
     }
+  }
+
+  pub async fn room_running(&self, id: Uuid) -> bool {
+    let rooms = self.rooms.lock().await;
+    if let Some(room) = rooms.get(&id) {
+      let room = room.lock().await;
+      return room.game_state.is_some();
+    }
+    false
   }
 }
 
@@ -336,7 +345,6 @@ impl Room {
 
         // Initialize game state here
         let state = GameState::init(
-          self.id,
           players.keys().copied().collect::<Vec<_>>(),
           room.small_blind,
           room.starting_cash,
@@ -346,8 +354,6 @@ impl Room {
         self
           .send_msg_to_all(GameMessage::GameStarted(state.game_info()))
           .await;
-
-        db.room().set_running(self.id, true).await?;
 
         for player in state.players.iter() {
           self
@@ -398,7 +404,7 @@ impl Room {
       }
       cmd => {
         if let Some(game_state) = &mut self.game_state {
-          for msg in game_state.handle_cmd(cmd, player, db).await {
+          for msg in game_state.handle_cmd(cmd, player) {
             if let GameMessage::InvalidCommand(_) = &msg {
               self.send_msg_to_current_player(player, msg).await;
             } else {
@@ -463,7 +469,7 @@ impl Room {
           name: player.name.clone(),
         })
         .collect(),
-      game_running: room.game_running,
+      game_running: self.game_state.is_some(),
       starting_cash: room.starting_cash,
       small_blind: room.small_blind,
       owner: room.owner,

@@ -74,7 +74,7 @@ async fn game<'a>(
               }
               None => {
                 let _ = stream.close(None).await;
-                state.leave_room(id, auth.sub, &db).await;
+                state.leave_room(id, auth.sub).await;
                 break;
               }
             }
@@ -83,7 +83,7 @@ async fn game<'a>(
           ws_msg = stream.next() => {
             match ws_msg {
               Some(Ok(Message::Close(_)) | Err(Error::AlreadyClosed | Error::ConnectionClosed)) | None => {
-                state.leave_room(id, auth.sub, &db).await;
+                state.leave_room(id, auth.sub).await;
                 break;
               },
               Some(Ok(Message::Text(msg))) => {

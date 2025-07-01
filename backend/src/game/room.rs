@@ -11,6 +11,7 @@ use crate::{
   auth::jwt::JwtClaims,
   db::{DB, DBTrait},
   error::{Error, Result},
+  game::ws::state::GlobalGameState,
 };
 
 use super::state::RoomState;
@@ -80,13 +81,13 @@ struct RoomInfo {
   small_blind: i32,
 }
 
-impl From<entity::room::Model> for RoomInfo {
-  fn from(value: entity::room::Model) -> Self {
+impl RoomInfo {
+  fn from_model(value: entity::room::Model, running: bool) -> Self {
     RoomInfo {
       id: value.id,
       owner: value.owner,
       created_at: value.created_at,
-      game_running: value.game_running,
+      game_running: running,
       starting_cash: value.starting_cash,
       small_blind: value.small_blind,
     }
@@ -98,9 +99,19 @@ impl From<entity::room::Model> for RoomInfo {
 /// Lists all rooms owned by the current user.
 #[openapi(tag = "game", ignore = "conn")]
 #[get("/list")]
-async fn list(auth: JwtClaims, conn: Connection<'_, DB>) -> Result<Json<Vec<RoomInfo>>> {
+async fn list(
+  auth: JwtClaims,
+  conn: Connection<'_, DB>,
+  state: &State<GlobalGameState>,
+) -> Result<Json<Vec<RoomInfo>>> {
   let db = conn.into_inner();
   let rooms = db.tables().room().list(auth.sub).await?;
 
-  Ok(Json(rooms.into_iter().map(RoomInfo::from).collect()))
+  let mut room_infos = Vec::with_capacity(rooms.len());
+  for room in rooms {
+    let running = state.room_running(room.id).await;
+    room_infos.push(RoomInfo::from_model(room, running));
+  }
+
+  Ok(Json(room_infos))
 }

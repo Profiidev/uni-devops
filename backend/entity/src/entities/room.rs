@@ -9,7 +9,6 @@ pub struct Model {
   pub id: Uuid,
   pub owner: Uuid,
   pub created_at: DateTime,
-  pub game_running: bool,
   pub starting_cash: i32,
   pub small_blind: i32,
 }
