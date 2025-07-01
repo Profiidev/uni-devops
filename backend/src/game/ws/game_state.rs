@@ -423,36 +423,38 @@ impl GameState {
       let winners_count = winners.len() as i32;
       let looser_count = self.players.len() as i32 - winners_count;
 
-      while let Some(id) = winners_by_bet.pop().map(|p| p.id) {
-        let player = self.players.iter_mut().find(|p| p.id == id).unwrap();
+      if looser_count != 0 {
+        while let Some(id) = winners_by_bet.pop().map(|p| p.id) {
+          let player = self.players.iter_mut().find(|p| p.id == id).unwrap();
 
-        let pot_per_player = pot / winners.len() as i32;
-        let pot_per_player_from_each_looser = pot_per_player / looser_count;
+          let pot_per_player = pot / winners.len() as i32;
+          let pot_per_player_from_each_looser = pot_per_player / looser_count;
 
-        // If the player is all in, they can only win as much as they bet
-        if player.cash == 0 && player.bet < pot_per_player_from_each_looser {
-          player.cash += player.bet * looser_count;
-          pot -= player.bet * looser_count;
-          winnings
-            .entry(id)
-            .and_modify(|w| *w += player.bet * looser_count);
-        } else {
-          player.cash += pot_per_player;
-          pot -= pot_per_player;
-          winnings.entry(id).and_modify(|w| *w += pot_per_player);
-        }
-      }
-
-      while pot > 0 {
-        for player in self.players.iter_mut() {
-          if !winners.contains(&player.id) {
-            continue;
+          // If the player is all in, they can only win as much as they bet
+          if player.cash == 0 && player.bet < pot_per_player_from_each_looser {
+            player.cash += player.bet * looser_count;
+            pot -= player.bet * looser_count;
+            winnings
+              .entry(id)
+              .and_modify(|w| *w += player.bet * looser_count);
+          } else {
+            player.cash += pot_per_player;
+            pot -= pot_per_player;
+            winnings.entry(id).and_modify(|w| *w += pot_per_player);
           }
-          player.cash += 1;
-          pot -= 1;
-          winnings.entry(player.id).and_modify(|w| *w += 1);
-          if pot <= 0 {
-            break;
+        }
+
+        while pot > 0 {
+          for player in self.players.iter_mut() {
+            if !winners.contains(&player.id) {
+              continue;
+            }
+            player.cash += 1;
+            pot -= 1;
+            winnings.entry(player.id).and_modify(|w| *w += 1);
+            if pot <= 0 {
+              break;
+            }
           }
         }
       }
