@@ -16,6 +16,10 @@ terraform {
       source  = "gavinbunney/kubectl"
       version = "~> 1.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
   required_version = ">= 1.1.0"
 
@@ -40,5 +44,8 @@ module "k8s" {
   k8s_key                    = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].client_key)
   k8s_cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.k8s.kube_config[0].cluster_ca_certificate)
 
-  dns_prefix = var.name
+  dns_prefix          = var.name
+  image_tag           = var.image_tag
+  image_pull_secret   = var.image_pull_secret
+  image_pull_username = var.image_pull_username
 }

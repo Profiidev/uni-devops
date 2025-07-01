@@ -26,3 +26,13 @@ variable "image_tag" {
   type        = string
   description = "The image version to deploy"
 }
+
+variable "image_pull_secret" {
+  type        = string
+  description = "The name of the image pull secret for the AKS cluster."
+}
+
+variable "image_pull_username" {
+  type        = string
+  description = "The username for the image pull secret."
+}

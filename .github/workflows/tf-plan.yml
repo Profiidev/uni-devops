@@ -10,6 +10,8 @@ env:
   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   # Dummy image version
   TF_VAR_image_tag: v0.1.0
+  TF_VAR_image_pull_secret: "dummy-pull-secret"
+  TF_VAR_image_pull_username:  "dummy-username"
 
 jobs:
   terraform:
