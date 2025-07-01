@@ -304,18 +304,21 @@
             : ''}"
         >
           <button
+            disabled={gameState?.current_player !== ownPlayerId}
             onclick={() => sendWebSocketMessage({ type: CommandType.Fold })}
           >
             Fold
           </button>
           {#if callAmount > (ownPlayer()?.bet || 0) && (ownPlayer()?.cash || 0) > 0}
             <button
+              disabled={gameState?.current_player !== ownPlayerId}
               onclick={() => sendWebSocketMessage({ type: CommandType.Call })}
             >
               Call
             </button>
           {:else}
             <button
+              disabled={gameState?.current_player !== ownPlayerId}
               onclick={() => sendWebSocketMessage({ type: CommandType.Check })}
             >
               Check
@@ -323,7 +326,8 @@
           {/if}
 
           <div
-            class="raiseContainer {maxRaiseAmount() > 0
+            class="raiseContainer {maxRaiseAmount() > 0 &&
+            gameState?.current_player === ownPlayerId
               ? 'possibleToRaise'
               : ''}"
           >
@@ -343,6 +347,7 @@
               max={maxRaiseAmount()}
             />
             <button
+              disabled={gameState?.current_player !== ownPlayerId}
               onclick={() => {
                 sendWebSocketMessage({
                   type: CommandType.Raise,
