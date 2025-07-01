@@ -25,7 +25,7 @@ pub struct GameState {
   pub deck: Vec<Card>,
   pub small_blind_amount: i32,
   pub players_checked: usize,
-  pub game_running: bool,
+  pub round_running: bool,
   pub game_ended: bool,
 }
 
@@ -77,7 +77,7 @@ impl GameState {
       deck,
       small_blind_amount,
       players_checked: 0,
-      game_running: true,
+      round_running: true,
       game_ended: false,
     }
   }
@@ -88,6 +88,7 @@ impl GameState {
       small_blind: self.small_blind,
       revealed_cards: self.revealed_cards.clone(),
       pot: self.pot,
+      round_running: self.round_running,
       players: self
         .players
         .iter()
@@ -105,7 +106,7 @@ impl GameState {
     &mut self,
     active_players: Vec<Uuid>,
   ) -> (Vec<GameMessage>, HashMap<Uuid, GameMessage>) {
-    if self.game_running {
+    if self.round_running {
       return (
         vec![GameMessage::InvalidCommand(InvalidCommand {
           message: "Game is still running".to_string(),
@@ -113,7 +114,7 @@ impl GameState {
         HashMap::new(),
       );
     }
-    self.game_running = true;
+    self.round_running = true;
 
     // Remove players with no cash left to continue
     self
@@ -200,7 +201,7 @@ impl GameState {
   }
 
   pub async fn player_leaves(&mut self, player: Uuid, db: &Tables<'_>) -> Vec<GameMessage> {
-    if !self.players.iter().any(|p| p.id == player) || !self.game_running {
+    if !self.players.iter().any(|p| p.id == player) || !self.round_running {
       return vec![];
     }
 
@@ -240,7 +241,7 @@ impl GameState {
     player: Uuid,
     db: &Tables<'_>,
   ) -> Vec<GameMessage> {
-    if !self.game_running || self.game_ended {
+    if !self.round_running || self.game_ended {
       return vec![GameMessage::InvalidCommand(InvalidCommand {
         message: "Game is not running".to_string(),
       })];
@@ -329,7 +330,7 @@ impl GameState {
 
     self.next_player();
 
-    if !self.game_ended && self.game_running {
+    if !self.game_ended && self.round_running {
       msgs.push(GameMessage::PlayerTurn(PlayerTurn {
         id: self.current_player,
       }));
@@ -382,7 +383,7 @@ impl GameState {
   }
 
   async fn end_game(&mut self, db: &Tables<'_>) -> Vec<GameMessage> {
-    self.game_running = false;
+    self.round_running = false;
 
     let remaining_players: Vec<_> = self.players.iter().filter(|p| !p.folded).collect();
     let mut msgs = if remaining_players.len() != 1 {
