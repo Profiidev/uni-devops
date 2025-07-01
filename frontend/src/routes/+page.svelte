@@ -103,7 +103,10 @@
               class="primaryButton"
               onclick={() => goto(`/game/${room.id}`)}>join</button
             >
-            <button class="deleteButton" onclick={() => deleteRoomClicked(room.id)}>delete</button>
+            <button
+              class="deleteButton"
+              onclick={() => deleteRoomClicked(room.id)}>delete</button
+            >
           </div>
         </div>
       {/each}
@@ -168,7 +171,7 @@
     border-radius: 8px;
     padding: 1rem;
   }
-  
+
   .row {
     display: flex;
     flex-direction: row;
