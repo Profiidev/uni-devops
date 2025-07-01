@@ -13,7 +13,7 @@
       if (!valid && browser) {
         let url = page.url.pathname;
         if (url !== '/login') {
-          goto('/login');
+          goto(`/login?redirectTo=${encodeURIComponent(url)}`);
         }
       }
     });

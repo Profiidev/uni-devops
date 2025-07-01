@@ -11,7 +11,8 @@ export type Message =
   | PlayerActed
   | RoundEnded
   | GameEnded
-  | BackToLobby;
+  | BackToLobby
+  | Heartbeat;
 
 export enum MessageType {
   InvalidCommand = 'InvalidCommand',
@@ -26,18 +27,24 @@ export enum MessageType {
   PlayerActed = 'PlayerActed',
   RoundEnded = 'RoundEnded',
   GameEnded = 'GameEnded',
-  BackToLobby = 'BackToLobby'
+  BackToLobby = 'BackToLobby',
+  Heartbeat = 'Heartbeat'
 }
 
 export type RoomInfo = {
   type: MessageType.RoomInfo;
   id: string; // uuid
   players: PlayerInfo[];
+  owner: string; // uuid
+  starting_cash: number;
+  small_blind: number;
+  game_running: boolean;
 };
 
 export type PlayerInfo = {
   id: string; // uuid
   name: string;
+  online: boolean;
 };
 
 export type InvalidCommand = {
@@ -45,23 +52,30 @@ export type InvalidCommand = {
   message: string;
 };
 
-export type GameInfo = {
-  type: MessageType.GameInfo;
+export type GameState = {
   pot: number;
   players: PlayerGameInfo[];
-  currentPlayer: string; // uuid
-  smallBlind: string; // uuid
+  current_player: string; // uuid
+  small_blind: string; // uuid
+  revealed_cards: Card[];
+  round_running: boolean; // Indicates if the round is currently running
+  game_ended: boolean; // Indicates if the game has ended
 };
+
+export type GameInfo = {
+  type: MessageType.GameInfo;
+} & GameState;
 
 export type PlayerGameInfo = {
   id: string; // uuid
   cash: number;
+  bet: number;
   folded: boolean;
 };
 
 export type GameStarted = {
   type: MessageType.GameStarted;
-} & GameInfo;
+} & GameState;
 
 export type PlayerJoined = {
   type: MessageType.PlayerJoined;
@@ -114,8 +128,8 @@ export type RoundEnded = {
 
 export type PlayerEndedInfo = {
   id: string; // uuid
-  cards?: [Card, Card]; // Only present if the player did not fold and more than 2 players are left because only then the cards are revealed
-  bestHand?: Hand; // Same as cards
+  cards?: [Card, Card]; // Only present if the player did not fold and more than 1 player is left because only then the cards are revealed
+  best_hand?: Hand; // Same as cards
   winnings: number;
 };
 
@@ -126,6 +140,10 @@ export type GameEnded = {
 
 export type BackToLobby = {
   type: MessageType.BackToLobby;
+};
+
+export type Heartbeat = {
+  type: MessageType.Heartbeat;
 };
 
 export type Card = {

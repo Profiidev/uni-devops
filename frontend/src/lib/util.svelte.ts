@@ -1,5 +1,3 @@
-import { PUBLIC_BACKEND_URL } from '$env/static/public';
-
 export enum RequestError {
   Other = 'Other',
   Unauthorized = 'Unauthorized',
@@ -61,7 +59,7 @@ const request = async <T>(
   }
 
   try {
-    let res = await fetch(`${PUBLIC_BACKEND_URL}${path}`, {
+    let res = await fetch(`/backend${path}`, {
       method,
       headers,
       body,

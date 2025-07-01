@@ -1,9 +1,11 @@
+use std::time::Duration;
+
 use rocket::{
   Route, State,
   futures::{SinkExt, StreamExt},
   get,
   serde::json,
-  tokio,
+  tokio::{self, time::sleep},
 };
 use rocket_okapi::{
   okapi::openapi3::OpenApi, openapi, openapi_get_spec, settings::OpenApiSettings,
@@ -17,6 +19,7 @@ use crate::{
   auth::jwt::JwtClaims,
   db::{DB, DBTrait},
   error::Result,
+  game::ws::messages::GameMessage,
 };
 
 mod card;
@@ -90,6 +93,12 @@ async fn game<'a>(
               },
               _ => (),
             }
+          }
+
+          _ = sleep(Duration::from_secs(10)) => {
+            // Heartbeat to keep the connection alive
+            let heartbeat = Message::Text(json::to_string(&GameMessage::Heartbeat).unwrap());
+            let _ = stream.send(heartbeat).await;
           }
         }
       }

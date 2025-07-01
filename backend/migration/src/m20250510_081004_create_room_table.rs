@@ -16,7 +16,6 @@ impl MigrationTrait for Migration {
           .col(pk_uuid(Room::Id))
           .col(uuid(Room::Owner))
           .col(date_time(Room::CreatedAt))
-          .col(boolean(Room::GameRunning))
           .col(integer(Room::StartingCash))
           .col(integer(Room::SmallBlind))
           .foreign_key(
@@ -44,7 +43,6 @@ pub enum Room {
   Id,
   Owner,
   CreatedAt,
-  GameRunning,
   StartingCash,
   SmallBlind,
 }

@@ -1,5 +1,5 @@
 use entity::{prelude::*, room};
-use sea_orm::{ActiveValue::Set, prelude::*};
+use sea_orm::{ActiveValue::Set, IntoActiveModel, prelude::*};
 
 pub struct RoomTable<'db> {
   db: &'db DatabaseConnection,
@@ -20,7 +20,6 @@ impl<'db> RoomTable<'db> {
       id: Set(Uuid::new_v4()),
       owner: Set(owner),
       created_at: Set(chrono::Utc::now().naive_utc()),
-      game_running: Set(false),
       starting_cash: Set(starting_cash),
       small_blind: Set(small_blind),
     };

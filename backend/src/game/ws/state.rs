@@ -83,8 +83,8 @@ impl GlobalGameState {
     db: &Tables<'_>,
   ) -> Result<(Receiver<GameMessage>, Arc<Mutex<Room>>)> {
     let nats_url = self.nats_url.clone();
-    let nats_update_subject_ = format!("{}.{}", self.nats_update_subject, id);
-    let nats_update_subject = Subject::from(nats_update_subject_.as_str());
+    let nats_update_subject = Subject::from(format!("{}.{}", self.nats_update_subject, id));
+    let nats_update_subject_ = nats_update_subject.clone();
 
     let players: Players = Default::default();
     let players_ = players.clone();
@@ -162,9 +162,13 @@ impl GlobalGameState {
         sender: sender.clone(),
       },
     );
+    drop(players);
+
     let _ = sender.send(room.room_info(db).await?).await;
     if let Some(game_state) = &room.game_state {
-      let _ = sender.send(game_state.game_info()).await;
+      let _ = sender
+        .send(GameMessage::GameInfo(game_state.game_info()))
+        .await;
     }
 
     Ok((receiver, room_arc.clone()))
@@ -179,8 +183,9 @@ impl GlobalGameState {
           room.send_msg_to_all(msg).await;
         }
       }
-      let mut players = room.players.lock().await;
-      players.remove(&player);
+      let mut players: rocket::tokio::sync::MutexGuard<'_, HashMap<Uuid, Player>> =
+        room.players.lock().await;
+      let player_name = players.remove(&player).map(|p| p.name);
       if players.is_empty() {
         drop(players);
         drop(room);
@@ -192,14 +197,24 @@ impl GlobalGameState {
         room.nats_notify.notify_one();
         room.nats_task.abort();
       } else {
+        drop(players);
         room
           .send_msg_to_all(GameMessage::PlayerLeft(PlayerInfo {
             id: player,
-            name: "".to_string(), // Name is not needed here
+            name: player_name.unwrap_or_default(),
           }))
           .await;
       }
     }
+  }
+
+  pub async fn room_running(&self, id: Uuid) -> bool {
+    let rooms = self.rooms.lock().await;
+    if let Some(room) = rooms.get(&id) {
+      let room = room.lock().await;
+      return room.game_state.is_some();
+    }
+    false
   }
 }
 
@@ -232,7 +247,7 @@ impl Room {
       GameCommand::GameInfo => {
         if let Some(game_state) = &self.game_state {
           self
-            .send_msg_to_current_player(player, game_state.game_info())
+            .send_msg_to_current_player(player, GameMessage::GameInfo(game_state.game_info()))
             .await;
         } else {
           self
@@ -248,7 +263,7 @@ impl Room {
       GameCommand::BackToLobby => {
         if let Some(game_state) = &self.game_state {
           let room = db.room().get(self.id).await?;
-          if room.owner != player || !game_state.game_ended {
+          if room.owner != player {
             self
               .send_msg_to_current_player(
                 player,
@@ -259,6 +274,18 @@ impl Room {
               .await;
             return Ok(());
           }
+          if !game_state.game_ended {
+            self
+              .send_msg_to_current_player(
+                player,
+                GameMessage::InvalidCommand(InvalidCommand {
+                  message: "Game is still ongoing".to_string(),
+                }),
+              )
+              .await;
+            return Ok(());
+          }
+
           // Reset game state
           self.game_state = None;
 
@@ -290,6 +317,7 @@ impl Room {
 
         let players = self.players.lock().await;
         if players.len() < 2 {
+          drop(players);
           self
             .send_msg_to_current_player(
               player,
@@ -304,6 +332,7 @@ impl Room {
         // Check if the player is the owner
         let room = db.room().get(self.id).await?;
         if room.owner != player {
+          drop(players);
           self
             .send_msg_to_current_player(
               player,
@@ -322,9 +351,12 @@ impl Room {
           room.starting_cash,
         );
 
-        self.send_msg_to_all(state.game_info()).await;
+        drop(players);
+        self
+          .send_msg_to_all(GameMessage::GameStarted(state.game_info()))
+          .await;
 
-        for player in state.players.values() {
+        for player in state.players.iter() {
           self
             .send_msg_to_player(
               player.id,
@@ -344,9 +376,32 @@ impl Room {
         self.game_state = Some(state);
       }
       GameCommand::NextRound => {
+        let room = db.room().get(self.id).await?;
+        if room.owner != player {
+          self
+            .send_msg_to_current_player(
+              player,
+              GameMessage::InvalidCommand(InvalidCommand {
+                message: "Only the room owner can start a new round".to_string(),
+              }),
+            )
+            .await;
+          return Ok(());
+        }
         if let Some(game_state) = &mut self.game_state {
-          for msg in game_state.next_round() {
-            self.send_msg_to_all(msg).await;
+          let players = self.players.lock().await;
+          let active_players: Vec<Uuid> = players.keys().copied().collect();
+          drop(players);
+          let (all, player_cards) = game_state.next_round(active_players);
+          for msg in all {
+            if let GameMessage::InvalidCommand(_) = &msg {
+              self.send_msg_to_current_player(player, msg).await;
+            } else {
+              self.send_msg_to_all(msg).await;
+            }
+          }
+          for (player_id, msg) in player_cards {
+            self.send_msg_to_player(player_id, msg).await;
           }
         } else {
           self
@@ -363,7 +418,11 @@ impl Room {
       cmd => {
         if let Some(game_state) = &mut self.game_state {
           for msg in game_state.handle_cmd(cmd, player) {
-            self.send_msg_to_all(msg).await;
+            if let GameMessage::InvalidCommand(_) = &msg {
+              self.send_msg_to_current_player(player, msg).await;
+            } else {
+              self.send_msg_to_all(msg).await;
+            }
           }
         } else {
           self
@@ -423,7 +482,7 @@ impl Room {
           name: player.name.clone(),
         })
         .collect(),
-      game_running: room.game_running,
+      game_running: self.game_state.is_some(),
       starting_cash: room.starting_cash,
       small_blind: room.small_blind,
       owner: room.owner,
