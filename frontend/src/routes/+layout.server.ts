@@ -5,10 +5,7 @@ export const load = async ({ cookies, url }) => {
 
   if (url.pathname !== '/login') {
     if (!cookie) {
-      redirect(
-        302,
-        `/login?redirectTo=${encodeURIComponent(url.pathname)}`
-      );
+      redirect(302, `/login?redirectTo=${encodeURIComponent(url.pathname)}`);
     }
   } else {
     if (cookie) {
