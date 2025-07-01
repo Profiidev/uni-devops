@@ -6,13 +6,14 @@ resource "kubernetes_namespace" "pgql" {
 
 resource "random_password" "sql_admin_password" {
   length  = 16
-  special = true
+  special = false
 }
 
 resource "random_string" "sql_admin_username" {
   length  = 8
   lower   = true
   numeric = true
+  special = false
 }
 
 resource "helm_release" "pgql" {
