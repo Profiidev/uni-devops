@@ -102,6 +102,7 @@ impl GameState {
     &mut self,
     active_players: Vec<Uuid>,
   ) -> (Vec<GameMessage>, HashMap<Uuid, GameMessage>) {
+    dbg!(&active_players);
     if self.round_running {
       return (
         vec![GameMessage::InvalidCommand(InvalidCommand {
@@ -111,12 +112,14 @@ impl GameState {
       );
     }
 
-    // Remove players with no cash left to continue
-    self
-      .players
-      .retain(|player| player.cash >= self.small_blind_amount * 2);
-
-    if active_players.len() < 2 {
+    if active_players.len() < 2
+      || self
+        .players
+        .iter()
+        .filter(|p| p.cash >= self.small_blind_amount * 2)
+        .count()
+        < 2
+    {
       return (
         vec![GameMessage::InvalidCommand(InvalidCommand {
           message: "Not enough players to start a new round".to_string(),
@@ -124,6 +127,30 @@ impl GameState {
         HashMap::new(),
       );
     }
+
+    let mut players_after_small_blind = self
+      .players
+      .iter()
+      .filter(|p| {
+        (active_players.contains(&p.id) && p.cash >= self.small_blind_amount * 2)
+          || p.id == self.small_blind
+      })
+      .cycle()
+      .skip_while(|&p| p.id != self.small_blind)
+      .skip(1)
+      .filter(|p| p.cash >= self.small_blind_amount * 2 && active_players.contains(&p.id))
+      .map(|p| p.id);
+
+    let small_blind = players_after_small_blind.next().unwrap();
+    let big_blind = players_after_small_blind.next().unwrap();
+    self.previous_player = big_blind;
+    self.current_player = players_after_small_blind.next().unwrap();
+    self.small_blind = small_blind;
+
+    // Remove players with no cash left to continue
+    self
+      .players
+      .retain(|player| player.cash >= self.small_blind_amount * 2);
 
     self.round_running = true;
     let mut msgs = Vec::new();
@@ -141,6 +168,7 @@ impl GameState {
         }));
       }
     }
+    dbg!(&self.players);
 
     // Reset pot and revealed cards
     self.pot = 0;
@@ -150,21 +178,11 @@ impl GameState {
     // Shuffle the deck for the next round
     self.deck = Card::deck();
 
-    let mut players_after_small_blind = self
-      .players
-      .iter()
-      .filter(|p| !p.folded)
-      .cycle()
-      .skip_while(|&p| p.id != self.small_blind)
-      .skip(1)
-      .map(|p| p.id);
-
-    let small_blind = players_after_small_blind.next().unwrap();
-    let big_blind = players_after_small_blind.next().unwrap();
-    self.previous_player = big_blind;
-    self.current_player = players_after_small_blind.next().unwrap();
-    self.small_blind = small_blind;
-
+    dbg!(
+      &self.small_blind,
+      &self.current_player,
+      &self.previous_player
+    );
     // Deal new cards to players
     let mut player_cards: HashMap<Uuid, GameMessage> = HashMap::new();
     for player in self.players.iter_mut() {
