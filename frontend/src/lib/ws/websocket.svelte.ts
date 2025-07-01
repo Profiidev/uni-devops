@@ -1,3 +1,4 @@
+import { goto } from '$app/navigation';
 import type { Command } from './command.svelte';
 
 let socket: WebSocket | null = null;
@@ -34,6 +35,7 @@ export function connectWebSocket(
 
   socket.onerror = (error) => {
     console.error('WebSocket error:', error);
+    goto("/");
   };
 }
 
