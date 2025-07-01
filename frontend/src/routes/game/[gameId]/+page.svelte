@@ -233,6 +233,7 @@
           winner={gameEnded?.winner === player.id}
           lastAction={lastPlayerAction.find((action) => action.id === player.id)
             ?.action || null}
+          roundRunning={gameState.round_running}
         />
       {/each}
     {/if}
@@ -268,6 +269,7 @@
           winner={gameEnded?.winner === player.id}
           lastAction={lastPlayerAction.find((action) => action.id === player.id)
             ?.action || null}
+          roundRunning={gameState.round_running}
         />
       {/if}
     {/if}

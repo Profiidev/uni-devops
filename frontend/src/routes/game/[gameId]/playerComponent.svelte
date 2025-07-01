@@ -16,7 +16,8 @@
     hand,
     winnings,
     winner,
-    lastAction
+    lastAction,
+    roundRunning
   } = $props<{
     name: String;
     playerGameInfo: PlayerGameInfo;
@@ -26,6 +27,7 @@
     winnings: number | null;
     winner: boolean;
     lastAction: PlayerAction | null;
+    roundRunning: boolean;
   }>();
 
   const endInfo: () => String = $derived(() => {
@@ -43,7 +45,7 @@
 </script>
 
 <div
-  class="player {turn ? 'playerTurn' : ''} {winner
+  class="player {turn && roundRunning ? 'playerTurn' : ''} {winner
     ? 'gameWon'
     : ''} {playerGameInfo?.folded ? 'folded' : ''}"
 >
@@ -76,7 +78,7 @@
   {/if}
   <div class="sideDisplay">
     <p>
-      {#if playerGameInfo.bet > 0}
+      {#if playerGameInfo.bet > 0 && roundRunning}
         Bet: ${playerGameInfo.bet}
       {/if}
     </p>
