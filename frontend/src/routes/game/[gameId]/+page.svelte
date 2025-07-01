@@ -172,6 +172,7 @@
         break;
       case MessageType.GameEnded:
         gameEnded = data;
+        if (gameState) gameState.game_ended = true;
         break;
       case MessageType.BackToLobby:
         if (roomInfo) roomInfo.game_running = false;

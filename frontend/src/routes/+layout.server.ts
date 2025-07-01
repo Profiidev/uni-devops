@@ -5,7 +5,7 @@ export const load = async ({ cookies, url }) => {
 
   if (url.pathname !== '/login') {
     if (!cookie) {
-      throw redirect(
+      redirect(
         302,
         `/login?redirectTo=${encodeURIComponent(url.pathname)}`
       );
@@ -13,7 +13,7 @@ export const load = async ({ cookies, url }) => {
   } else {
     if (cookie) {
       const redirectTo = url.searchParams.get('redirectTo') || '/';
-      throw redirect(302, redirectTo);
+      redirect(302, redirectTo);
     }
   }
 };
