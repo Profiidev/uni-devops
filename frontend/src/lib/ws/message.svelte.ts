@@ -59,6 +59,7 @@ export type GameState = {
   small_blind: string; // uuid
   revealed_cards: Card[];
   round_running: boolean; // Indicates if the round is currently running
+  game_ended: boolean; // Indicates if the game has ended
 };
 
 export type GameInfo = {

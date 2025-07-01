@@ -76,6 +76,7 @@ pub struct GameInfo {
   pub current_player: Uuid,
   pub small_blind: Uuid,
   pub round_running: bool,
+  pub game_ended: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

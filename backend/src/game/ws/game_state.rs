@@ -25,7 +25,7 @@ pub struct GameState {
   pub game_ended: bool,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct PlayerState {
   pub id: Uuid,
   pub bet: i32,
@@ -84,6 +84,7 @@ impl GameState {
       revealed_cards: self.revealed_cards.clone(),
       pot: self.pot,
       round_running: self.round_running,
+      game_ended: self.game_ended,
       players: self
         .players
         .iter()
@@ -375,7 +376,7 @@ impl GameState {
   fn end_game(&mut self) -> Vec<GameMessage> {
     self.round_running = false;
 
-    let remaining_players: Vec<_> = self.players.iter().filter(|p| !p.folded).collect();
+    let mut remaining_players: Vec<_> = self.players.iter_mut().filter(|p| !p.folded).collect();
     let mut msgs = if remaining_players.len() != 1 {
       let community: [Card; 5] = self
         .revealed_cards
@@ -475,6 +476,8 @@ impl GameState {
           .collect(),
       })]
     } else {
+      remaining_players[0].cash += self.pot;
+
       vec![GameMessage::RoundEnded(RoundEnded {
         players: remaining_players
           .iter()
@@ -491,7 +494,7 @@ impl GameState {
     let non_broke_players: Vec<&PlayerState> = self
       .players
       .iter()
-      .filter(|p| p.cash > self.small_blind_amount * 2)
+      .filter(|p| p.cash >= self.small_blind_amount * 2)
       .collect();
     if non_broke_players.len() == 1 {
       // If only one player has cash left, they win the game
