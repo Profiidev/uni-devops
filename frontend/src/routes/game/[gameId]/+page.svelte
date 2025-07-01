@@ -67,7 +67,6 @@
   let lastPlayerAction: { action: PlayerAction; id: string }[] = $state([]);
   let roundEnded: RoundEnded | null = $state(null);
   let gameEnded: GameEnded | null = $state(null);
-  let showBackToLobby: boolean = $state(false);
 
   function handleIncoming(data: Message) {
     console.log('Received data:', data);
@@ -87,7 +86,6 @@
         roundEnded = null;
         gameEnded = null;
         gameState = data;
-        showBackToLobby = false;
         if (roomInfo) {
           callAmount = roomInfo.small_blind * 2;
           roomInfo.game_running = true;
@@ -174,7 +172,6 @@
         break;
       case MessageType.GameEnded:
         gameEnded = data;
-        showBackToLobby = true;
         break;
       case MessageType.BackToLobby:
         if (roomInfo) roomInfo.game_running = false;
@@ -336,7 +333,7 @@
         </div>
       {/if}
     {:else if roomInfo?.owner === ownPlayerId}
-      {#if showBackToLobby}
+      {#if gameState.game_ended}
         <button
           onclick={() =>
             sendWebSocketMessage({ type: CommandType.BackToLobby })}
