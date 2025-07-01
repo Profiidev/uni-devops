@@ -375,34 +375,6 @@
 {:else}
   <p>Loading game information...</p>
 {/if}
-<br />
-<br />
-<br />
-<br />
-<br />
-<p>only there for testing:</p>
-<div
-  class="tmpOptions"
-  style="display: flex; gap: 20px; flex-wrap: wrap; margin: 20px;"
->
-  <button onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}
-    >Start Game</button
-  >
-  <button onclick={() => sendWebSocketMessage({ type: CommandType.NextRound })}>
-    Next Round
-  </button>
-  <button
-    onclick={() => sendWebSocketMessage({ type: CommandType.BackToLobby })}
-  >
-    Back to Lobby
-  </button>
-  <button onclick={() => sendWebSocketMessage({ type: CommandType.GameInfo })}>
-    Refresh Game Info
-  </button>
-  <button onclick={() => sendWebSocketMessage({ type: CommandType.RoomInfo })}>
-    Refresh Room Info
-  </button>
-</div>
 
 <style>
   .enemyPlayerContainer {
