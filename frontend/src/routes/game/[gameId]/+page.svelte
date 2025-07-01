@@ -67,6 +67,7 @@
   let lastPlayerAction: { action: PlayerAction; id: string }[] = $state([]);
   let roundEnded: RoundEnded | null = $state(null);
   let gameEnded: GameEnded | null = $state(null);
+  let showBackToLobby: boolean = $state(false);
 
   function handleIncoming(data: Message) {
     console.log('Received data:', data);
@@ -81,12 +82,12 @@
         break;
       case MessageType.GameInfo:
         gameState = data;
-        if (roomInfo) roomInfo.game_running = true;
         break;
       case MessageType.GameStarted:
         roundEnded = null;
         gameEnded = null;
         gameState = data;
+        showBackToLobby = false;
         if (roomInfo) {
           callAmount = roomInfo.small_blind * 2;
           roomInfo.game_running = true;
@@ -156,6 +157,7 @@
         break;
       case MessageType.RoundEnded:
         if (!roomInfo || !gameState) break;
+        gameState.round_running = false;
         roundEnded = data;
         pot = 0;
         gameState.current_player = 'null';
@@ -172,6 +174,7 @@
         break;
       case MessageType.GameEnded:
         gameEnded = data;
+        showBackToLobby = true;
         break;
       case MessageType.BackToLobby:
         if (roomInfo) roomInfo.game_running = false;
@@ -271,7 +274,7 @@
   </div>
 
   <div class="actions">
-    {#if !roundEnded}
+    {#if gameState.round_running}
       {#if !ownPlayer()?.folded && ownPlayer()?.id === ownPlayerId}
         <div
           class="gameActions {gameState?.current_player === ownPlayerId
@@ -283,7 +286,7 @@
           >
             Fold
           </button>
-          {#if callAmount > (ownPlayer()?.bet || 0)}
+          {#if callAmount > (ownPlayer()?.bet || 0) && (ownPlayer()?.cash || 0) > 0}
             <button
               onclick={() => sendWebSocketMessage({ type: CommandType.Call })}
             >
@@ -331,7 +334,7 @@
         </div>
       {/if}
     {:else if roomInfo?.owner === ownPlayerId}
-      {#if gameEnded}
+      {#if showBackToLobby}
         <button
           onclick={() =>
             sendWebSocketMessage({ type: CommandType.BackToLobby })}
@@ -347,39 +350,37 @@
       {/if}
     {/if}
   </div>
-  <p>only there for testing:</p>
-  <div
-    class="tmpOptions"
-    style="display: flex; gap: 20px; flex-wrap: wrap; margin: 20px;"
-  >
-    <button
-      onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}
-      >Start Game</button
-    >
-    <button
-      onclick={() => sendWebSocketMessage({ type: CommandType.NextRound })}
-    >
-      Next Round
-    </button>
-    <button
-      onclick={() => sendWebSocketMessage({ type: CommandType.BackToLobby })}
-    >
-      Back to Lobby
-    </button>
-    <button
-      onclick={() => sendWebSocketMessage({ type: CommandType.GameInfo })}
-    >
-      Refresh Game Info
-    </button>
-    <button
-      onclick={() => sendWebSocketMessage({ type: CommandType.RoomInfo })}
-    >
-      Refresh Room Info
-    </button>
-  </div>
 {:else}
   <p>Loading game information...</p>
 {/if}
+<br />
+<br />
+<br />
+<br />
+<br />
+<p>only there for testing:</p>
+<div
+  class="tmpOptions"
+  style="display: flex; gap: 20px; flex-wrap: wrap; margin: 20px;"
+>
+  <button onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}
+    >Start Game</button
+  >
+  <button onclick={() => sendWebSocketMessage({ type: CommandType.NextRound })}>
+    Next Round
+  </button>
+  <button
+    onclick={() => sendWebSocketMessage({ type: CommandType.BackToLobby })}
+  >
+    Back to Lobby
+  </button>
+  <button onclick={() => sendWebSocketMessage({ type: CommandType.GameInfo })}>
+    Refresh Game Info
+  </button>
+  <button onclick={() => sendWebSocketMessage({ type: CommandType.RoomInfo })}>
+    Refresh Room Info
+  </button>
+</div>
 
 <style>
   .enemyPlayerContainer {
