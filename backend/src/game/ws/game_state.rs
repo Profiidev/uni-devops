@@ -115,6 +115,15 @@ impl GameState {
       .players
       .retain(|player| player.cash > self.small_blind_amount * 2);
 
+    if self.players.len() < 2 {
+      return (
+        vec![GameMessage::InvalidCommand(InvalidCommand {
+          message: "Not enough players to start a new round".to_string(),
+        })],
+        HashMap::new(),
+      );
+    }
+
     let mut msgs = Vec::new();
 
     // Reset players' bets for the next round
@@ -253,19 +262,21 @@ impl GameState {
             message: "You must raise or check".to_string(),
           })];
         }
+        if current.cash <= 0 {
+          return vec![GameMessage::InvalidCommand(InvalidCommand {
+            message: "You have to check or fold, you have no cash left".to_string(),
+          })];
+        }
         let call_diff = (previous - current.bet).min(current.cash);
         current.cash -= call_diff;
         current.bet += call_diff;
         self.pot += call_diff;
-        if current.cash != 0 {
-          self.players_checked += 1;
-        }
+        self.players_checked += 1;
         msgs.extend(self.check_next_round());
         self.previous_player = self.current_player;
-        msgs.extend(self.check_skip_rounds());
       }
       GameCommand::Check => {
-        if previous > current.bet {
+        if previous > current.bet && current.cash > 0 {
           return vec![GameMessage::InvalidCommand(InvalidCommand {
             message: "You must call or raise".to_string(),
           })];
@@ -297,7 +308,6 @@ impl GameState {
         self.pot += amount + call_diff;
         self.previous_player = self.current_player;
         self.players_checked = 1;
-        msgs.extend(self.check_skip_rounds());
       }
       _ => unreachable!("All other commands should be handled in the room"),
     }
@@ -318,27 +328,6 @@ impl GameState {
     msgs
   }
 
-  /// Skips rounds if only one player is not all in
-  fn check_skip_rounds(&mut self) -> Vec<GameMessage> {
-    if self
-      .players
-      .iter()
-      .filter(|p| !p.folded && p.cash > 0)
-      .count()
-      != 1
-    {
-      return vec![];
-    }
-
-    let mut msgs = Vec::new();
-    while self.game_running {
-      self.players_checked = 1;
-      msgs.extend(self.check_next_round());
-    }
-
-    msgs
-  }
-
   fn next_player(&mut self) {
     self.current_player = self
       .players
@@ -346,19 +335,13 @@ impl GameState {
       .cycle()
       .skip_while(|&p| p.id != self.current_player)
       .skip(1)
-      .find(|&p| !p.folded && p.cash > 0)
+      .find(|&p| !p.folded)
       .map(|p| p.id)
       .unwrap();
   }
 
   fn check_next_round(&mut self) -> Vec<GameMessage> {
-    if self.players_checked
-      == self
-        .players
-        .iter()
-        .filter(|p| !p.folded && p.cash > 0)
-        .count()
-    {
+    if self.players_checked == self.players.iter().filter(|p| !p.folded).count() {
       if self.revealed_cards.len() < 5 {
         let mut msgs = Vec::new();
         if self.revealed_cards.is_empty() {
