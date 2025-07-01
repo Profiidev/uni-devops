@@ -102,7 +102,6 @@ impl GameState {
     &mut self,
     active_players: Vec<Uuid>,
   ) -> (Vec<GameMessage>, HashMap<Uuid, GameMessage>) {
-    dbg!(&active_players);
     if self.round_running {
       return (
         vec![GameMessage::InvalidCommand(InvalidCommand {
@@ -168,7 +167,6 @@ impl GameState {
         }));
       }
     }
-    dbg!(&self.players);
 
     // Reset pot and revealed cards
     self.pot = 0;
@@ -178,11 +176,6 @@ impl GameState {
     // Shuffle the deck for the next round
     self.deck = Card::deck();
 
-    dbg!(
-      &self.small_blind,
-      &self.current_player,
-      &self.previous_player
-    );
     // Deal new cards to players
     let mut player_cards: HashMap<Uuid, GameMessage> = HashMap::new();
     for player in self.players.iter_mut() {
