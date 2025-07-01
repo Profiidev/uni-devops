@@ -283,6 +283,7 @@ impl Room {
                 }),
               )
               .await;
+            return Ok(());
           }
 
           // Reset game state
