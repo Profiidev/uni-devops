@@ -35,7 +35,7 @@ export function connectWebSocket(
 
   socket.onerror = (error) => {
     console.error('WebSocket error:', error);
-    goto("/");
+    goto('/');
   };
 }
 
