@@ -4,55 +4,69 @@
     connectWebSocket,
     closeWebSocket,
     sendWebSocketMessage
-  } from '$lib/websocket.svelte';
+  } from '$lib/ws/websocket.svelte';
   import {
     MessageType,
     type RoomInfo,
     type PlayerInfo,
-    type GameInfo,
     type Card,
     type RoundEnded,
     type PlayerGameInfo,
-    type Message
+    type Message,
+    type GameState,
+    PlayerActionType,
+    type GameEnded,
+    type PlayerAction
   } from '$lib/ws/message.svelte';
   import { userInfo } from '$lib/user.svelte.js';
   import { CommandType } from '$lib/ws/command.svelte.js';
-  import Player from './player.svelte';
+  import PlayerComponent from './playerComponent.svelte';
+  import CardComponent from './cardComponent.svelte';
 
   const { data } = $props();
   const { gameId } = data;
 
-  let roomInfo: RoomInfo = $state({
-    type: MessageType.RoomInfo,
-    id: gameId,
-    players: [],
-    owner: '',
-    game_running: false,
-    starting_cash: 0,
-    small_blind: 0
+  let roomInfo: RoomInfo | null = $state(null);
+  let ownPlayerId: string | null = $state(null);
+  let gameState: GameState | null = $state(null);
+  let ownPlayer: () => PlayerGameInfo | null = $derived(() => {
+    if (!gameState || !ownPlayerId) return null;
+    const ownId = ownPlayerId;
+    const ownPlayer = gameState.players.find((p) => p.id === ownId);
+    if (ownPlayer) return ownPlayer;
+    return gameState.players[0];
   });
-  let ownPlayerInfo: PlayerInfo | undefined = $state();
-  let gameInfo: GameInfo | undefined = $state();
-  let ownPlayer: () => PlayerGameInfo | undefined = $derived(() => {
-    return gameInfo?.players.find((p) => p.id === ownPlayerInfo!.id);
-  });
-  let enemyPlayer: () => PlayerGameInfo[] | undefined = $derived(() => {
-    const ps = gameInfo?.players || [];
-    const index = ps.findIndex((p) => p.id === ownPlayerInfo!.id);
-    if (index === -1) return undefined;
+  let enemyPlayer: () => PlayerGameInfo[] = $derived(() => {
+    const playerBottom = ownPlayer();
+    if (!gameState || !playerBottom) return [];
+    const ps = gameState.players;
+    const ownId = playerBottom.id;
+    const index = ps.findIndex((p) => p.id === ownId);
+    if (index === -1) return [];
     return [...ps.slice(index + 1), ...ps.slice(0, index)];
   });
+
   let ownCards: Card[] = $state([]);
-  let raiseAmount: number = $state(0);
-  let revealedCards: Card[] = $state([]);
-  let paddedCards = $derived(() =>
-    Array.from(
+  let paddedCards: () => Card[] | undefined[] = $derived(() => {
+    if (!gameState) return Array(5).fill(undefined);
+    return Array.from(
       { length: 5 },
-      (_, i) => revealedCards[i] || { rank: '?', suit: '?' }
-    )
-  );
-  let callAmount: number = 0;
-  let roundEnded: RoundEnded | undefined = $state();
+      (_, i) => gameState?.revealed_cards[i] || undefined
+    );
+  });
+  let raiseAmount: number = $state(1);
+  let pot: number = $state(0);
+  let callAmount: number = $state(0);
+  let maxRaiseAmount: () => number = $derived(() => {
+    if (!ownPlayer()) return 0;
+    return Math.max(
+      (ownPlayer()?.cash || 0) + (ownPlayer()?.bet || 0) - callAmount,
+      0
+    );
+  });
+  let lastPlayerAction: { action: PlayerAction; id: string }[] = $state([]);
+  let roundEnded: RoundEnded | null = $state(null);
+  let gameEnded: GameEnded | null = $state(null);
 
   function handleIncoming(data: Message) {
     console.log('Received data:', data);
@@ -60,81 +74,108 @@
     switch (data.type) {
       case MessageType.RoomInfo:
         roomInfo = data;
-        callAmount = data.small_blind * 2;
+        for (const player of roomInfo.players) player.online = true;
         break;
       case MessageType.InvalidCommand:
         console.error('Invalid command received:', data);
         break;
       case MessageType.GameInfo:
-        gameInfo = data;
-        roomInfo.game_running = true;
+        gameState = data;
         break;
       case MessageType.GameStarted:
-        roomInfo.game_running = true;
-        break;
-      case MessageType.PlayerJoined:
-        if (!roomInfo.players.some((p) => p.id === data.id)) {
-          roomInfo.players = [
-            ...(roomInfo.players || []),
-            { id: data.id, name: data.name }
-          ];
+        roundEnded = null;
+        gameEnded = null;
+        gameState = data;
+        if (roomInfo) {
+          callAmount = roomInfo.small_blind * 2;
+          roomInfo.game_running = true;
+          pot = roomInfo.small_blind * 3;
         }
         break;
+      case MessageType.PlayerJoined:
+        if (!roomInfo) break;
+        const playerJoined = roomInfo.players.find((p) => p.id === data.id);
+        if (playerJoined) {
+          playerJoined.name = data.name;
+          playerJoined.online = true;
+          break;
+        }
+        roomInfo.players = [
+          ...(roomInfo.players || []),
+          { id: data.id, name: data.name, online: true }
+        ];
+        break;
       case MessageType.PlayerLeft:
-        roomInfo.players = roomInfo.players.filter(
-          (p: PlayerInfo) => p.id !== data.id
-        );
+        if (!roomInfo) break;
+        const playerLeft = roomInfo.players.find((p) => p.id === data.id);
+        if (playerLeft) playerLeft.online = false;
         break;
       case MessageType.PlayerTurn:
-        if (gameInfo) gameInfo.current_player = data.id;
-        else sendWebSocketMessage({ type: CommandType.GameInfo });
+        if (!gameState) break;
+        gameState.current_player = data.id;
+        lastPlayerAction = lastPlayerAction.filter(
+          (action) => action.id !== data.id
+        );
         break;
       case MessageType.YourCards:
         ownCards = data.cards;
         break;
       case MessageType.CardRevealed:
-        revealedCards = [
-          ...revealedCards,
+        if (!gameState) break;
+        gameState.revealed_cards = [
+          ...gameState.revealed_cards,
           { rank: data.rank, suit: data.suit }
         ];
         break;
       case MessageType.PlayerActed:
+        if (!gameState) break;
+        const player = gameState.players.find((p) => p.id === data.id);
+        if (!player) break;
+        lastPlayerAction = lastPlayerAction.filter(
+          (action) => action.id !== data.id
+        );
+        lastPlayerAction.push({ action: data.action, id: data.id });
         switch (data.action.type) {
-          case 'Fold':
-            if (gameInfo) {
-              gameInfo.players.find((p) => p.id === data.id)!.folded = true;
-            }
+          case PlayerActionType.Fold:
+            player.folded = true;
             break;
-          case 'Call':
-            if (gameInfo) {
-              const player = gameInfo.players.find((p) => p.id === data.id);
-              if (player) {
-                const difference = Math.min(
-                  callAmount - player.bet,
-                  player.cash
-                );
-                player.bet += difference;
-                player.cash -= difference;
-              }
-            }
+          case PlayerActionType.Check:
             break;
-          case 'Check':
-            break;
-          case 'Raise':
-            if (gameInfo) {
-              const player = gameInfo.players.find((p) => p.id === data.id);
-              if (player) {
-                callAmount += data.action.amount;
-                const difference = Math.min(
-                  callAmount - player.bet,
-                  player.cash
-                );
-                player.bet += difference;
-                player.cash -= difference;
-              }
-            }
+          case PlayerActionType.Raise:
+            callAmount += data.action.amount;
+          // fallthrough intentional
+          case PlayerActionType.Call:
+            const difference = Math.min(callAmount - player.bet, player.cash);
+            player.bet += difference;
+            player.cash -= difference;
+            pot += difference;
+            raiseAmount = Math.min(raiseAmount, maxRaiseAmount());
             break;
         }
+        break;
+      case MessageType.RoundEnded:
+        if (!roomInfo || !gameState) break;
+        gameState.round_running = false;
+        roundEnded = data;
+        pot = 0;
+        gameState.current_player = 'null';
+        lastPlayerAction = [];
+        for (const player of roundEnded.players) {
+          const playerInGameState = gameState.players.find(
+            (p) => p.id === player.id
+          );
+          if (playerInGameState) {
+            playerInGameState.cash += player.winnings;
+            playerInGameState.bet = 0;
+          }
+        }
+        break;
+      case MessageType.GameEnded:
+        gameEnded = data;
+        if (gameState) gameState.game_ended = true;
+        break;
+      case MessageType.BackToLobby:
+        if (roomInfo) roomInfo.game_running = false;
         break;
     }
   }
@@ -142,8 +183,8 @@
   onMount(() => {
     userInfo().then((playerInfo) => {
       if (playerInfo !== null) {
-        ownPlayerInfo = playerInfo as PlayerInfo;
-        console.log('Own ID:', ownPlayerInfo.id);
+        ownPlayerId = (playerInfo as PlayerInfo).id;
+        console.log('Own ID:', ownPlayerId);
         connectWebSocket(gameId, handleIncoming);
       }
     });
@@ -154,86 +195,187 @@
   });
 </script>
 
-{#if !roomInfo.game_running}
-  <h2>Player:</h2>
-  {#each roomInfo.players as player}
-    <p>{player.name}</p>
-  {/each}
-  {#if roomInfo.owner === ownPlayerInfo?.id}
-    <button
-      onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}
-    >
-      Start Game
-    </button>
-  {/if}
-{:else if gameInfo}
+{#if !roomInfo}
+  <p>Loading room information...</p>
+{:else if !roomInfo.game_running}
+  <main>
+    <h1>Dealing With DevOps</h1>
+
+    <div class="middle">
+      <h2>Invite:</h2>
+      <div class="mid">
+        <div class="copyLink">
+          <button
+            onclick={() => navigator.clipboard.writeText(window.location.href)}
+            >copy Link</button
+          >
+          <p>{window.location.href}</p>
+        </div>
+      </div>
+
+      <h2>Player:</h2>
+      <div class="mid">
+        {#each roomInfo.players as player}
+          {#if player.online}
+            <p>{player.name}</p>
+          {/if}
+        {/each}
+
+        {#if roomInfo.owner === ownPlayerId}
+          <button
+            class="primaryButton"
+            onclick={() =>
+              sendWebSocketMessage({ type: CommandType.StartGame })}
+          >
+            Start Game
+          </button>
+        {/if}
+      </div>
+    </div>
+  </main>
+{:else if gameState}
   <div class="enemyPlayerContainer">
-    {#if enemyPlayer !== undefined}
-      {#each enemyPlayer()! as player}
-        <Player
+    {#if enemyPlayer().length > 0}
+      {#each enemyPlayer() as player}
+        <PlayerComponent
           name={roomInfo.players.find((p) => p.id === player.id)?.name ||
             'Unknown Player'}
           playerGameInfo={player}
-          cards={[undefined, undefined]}
-          turn={gameInfo.current_player === player.id}
+          cards={roundEnded?.players.find((p) => p.id === player.id)?.cards || [
+            undefined,
+            undefined
+          ]}
+          turn={gameState.current_player === player.id}
+          hand={roundEnded?.players.find((p) => p.id === player.id)
+            ?.best_hand || null}
+          winnings={roundEnded?.players.find((p) => p.id === player.id)
+            ?.winnings || null}
+          winner={gameEnded?.winner === player.id}
+          lastAction={lastPlayerAction.find((action) => action.id === player.id)
+            ?.action || null}
+          roundRunning={gameState.round_running}
         />
       {/each}
     {/if}
   </div>
 
-  <div class="centerCards">
-    <div class="cardContainer">
+  <div class="center">
+    <p class="pot">
+      {#if !roundEnded}
+        Pot: {pot}
+      {/if}
+    </p>
+    <div class="centerCards">
       {#each paddedCards() as card}
-        <div class="card">
-          {card.rank} of {card.suit}
-        </div>
+        <CardComponent {card} />
       {/each}
     </div>
   </div>
 
   <div class="ownPlayerContainer">
-    {#if ownPlayer !== undefined}
-      <Player
-        name={ownPlayerInfo?.name || 'You'}
-        playerGameInfo={ownPlayer()!}
-        cards={ownCards}
-        turn={gameInfo.current_player === ownPlayerInfo?.id}
-      />
+    {#if ownPlayerId}
+      {@const player = ownPlayer()}
+      {#if player}
+        <PlayerComponent
+          name={roomInfo.players.find((p) => p.id === player.id)?.name ||
+            'Unknown Player'}
+          playerGameInfo={player}
+          cards={ownCards || [undefined, undefined]}
+          turn={gameState?.current_player === player.id}
+          hand={roundEnded?.players.find((p) => p.id === player.id)
+            ?.best_hand || null}
+          winnings={roundEnded?.players.find((p) => p.id === player.id)
+            ?.winnings || null}
+          winner={gameEnded?.winner === player.id}
+          lastAction={lastPlayerAction.find((action) => action.id === player.id)
+            ?.action || null}
+          roundRunning={gameState.round_running}
+        />
+      {/if}
     {/if}
   </div>
 
   <div class="actions">
-    <button onclick={() => sendWebSocketMessage({ type: CommandType.Fold })}>
-      Fold
-    </button>
-    <button onclick={() => sendWebSocketMessage({ type: CommandType.Call })}>
-      Call
-    </button>
-    <button onclick={() => sendWebSocketMessage({ type: CommandType.Check })}>
-      Check
-    </button>
+    {#if gameState.round_running}
+      {#if !ownPlayer()?.folded && ownPlayer()?.id === ownPlayerId}
+        <div
+          class="gameActions {gameState?.current_player === ownPlayerId
+            ? 'yourTurn'
+            : ''}"
+        >
+          <button
+            disabled={gameState?.current_player !== ownPlayerId}
+            onclick={() => sendWebSocketMessage({ type: CommandType.Fold })}
+          >
+            Fold
+          </button>
+          {#if callAmount > (ownPlayer()?.bet || 0) && (ownPlayer()?.cash || 0) > 0}
+            <button
+              disabled={gameState?.current_player !== ownPlayerId}
+              onclick={() => sendWebSocketMessage({ type: CommandType.Call })}
+            >
+              Call
+            </button>
+          {:else}
+            <button
+              disabled={gameState?.current_player !== ownPlayerId}
+              onclick={() => sendWebSocketMessage({ type: CommandType.Check })}
+            >
+              Check
+            </button>
+          {/if}
 
-    <div class="raise-container">
-      <input
-        type="range"
-        bind:value={raiseAmount}
-        min="1"
-        max="150"
-        step="1"
-        defaultValue="10"
-      />
-      <p>{raiseAmount}</p>
-      <button
-        onclick={() => {
-          sendWebSocketMessage({
-            type: CommandType.Raise,
-            amount: raiseAmount
-          });
-        }}
-      >
-        Raise
-      </button>
-    </div>
+          <div
+            class="raiseContainer {maxRaiseAmount() > 0 &&
+            gameState?.current_player === ownPlayerId
+              ? 'possibleToRaise'
+              : ''}"
+          >
+            <input
+              type="range"
+              class="raiseSlider"
+              bind:value={raiseAmount}
+              min="1"
+              max={maxRaiseAmount()}
+              step="1"
+            />
+            <input
+              type="number"
+              class="raiseInput"
+              bind:value={raiseAmount}
+              min="1"
+              max={maxRaiseAmount()}
+            />
+            <button
+              disabled={gameState?.current_player !== ownPlayerId}
+              onclick={() => {
+                sendWebSocketMessage({
+                  type: CommandType.Raise,
+                  amount: raiseAmount
+                });
+              }}
+            >
+              Raise
+            </button>
+          </div>
+        </div>
+      {/if}
+    {:else if roomInfo?.owner === ownPlayerId}
+      {#if gameState.game_ended}
+        <button
+          onclick={() =>
+            sendWebSocketMessage({ type: CommandType.BackToLobby })}
+        >
+          Back to Lobby
+        </button>
+      {:else}
+        <button
+          onclick={() => sendWebSocketMessage({ type: CommandType.NextRound })}
+        >
+          Next Round
+        </button>
+      {/if}
+    {/if}
   </div>
 {:else}
   <p>Loading game information...</p>
@@ -253,31 +395,146 @@
     align-items: center;
   }
 
-  .centerCards {
+  .center {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 5px;
+    flex-direction: column;
+    gap: 10px;
     margin: 20px;
+  }
+
+  .centerCards {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
 
   .actions {
     display: flex;
-    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 30px;
     margin: 20px;
+
+    button {
+      padding: 5px 10px;
+      background-color: var(--primary-color);
+      border: 3px solid var(--surface-background);
+      border-radius: 10px;
+      min-width: 80px;
+      font-size: large;
+    }
+
+    .gameActions {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 30px;
+      opacity: 0.6;
+
+      .raiseContainer {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        opacity: 0.6;
+
+        .raiseInput {
+          text-align: center;
+        }
+
+        button {
+          cursor: default;
+        }
+      }
+
+      .possibleToRaise {
+        opacity: 1;
+
+        button {
+          cursor: pointer;
+        }
+      }
+    }
+
+    .yourTurn {
+      opacity: 1;
+
+      button {
+        cursor: pointer;
+      }
+    }
   }
 
-  .raise-container {
+  main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 2rem;
+    gap: 2rem;
+  }
+
+  .middle {
+    border-radius: 15px;
+    padding: 3.5rem;
+    gap: 1rem;
+    background-color: var(--surface-background);
+    width: min(90vw, 700px);
+  }
+
+  .mid {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    margin: 10px;
+    gap: 10px;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  p {
+    font-size: 1rem;
+  }
+
+  .primaryButton {
+    padding: 0.5rem 1rem;
+    width: fit-content;
+    background-color: var(--primary-color);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .copyLink {
     display: flex;
     flex-direction: row;
+    gap: 10px;
+    border: 2px solid var(--text-color);
+    border-radius: 10px;
     align-items: center;
-    gap: 5px;
-  }
+    width: fit-content;
 
-  .raise-container p {
-    width: 25px;
+    button {
+      cursor: pointer;
+      background-color: var(--primary-color);
+      padding: 10px;
+      border-radius: 10px;
+    }
+
+    p {
+      max-width: 220px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+    }
   }
 </style>

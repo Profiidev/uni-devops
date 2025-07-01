@@ -44,6 +44,7 @@ export type RoomInfo = {
 export type PlayerInfo = {
   id: string; // uuid
   name: string;
+  online: boolean;
 };
 
 export type InvalidCommand = {
@@ -51,14 +52,19 @@ export type InvalidCommand = {
   message: string;
 };
 
-export type GameInfo = {
-  type: MessageType.GameInfo;
+export type GameState = {
   pot: number;
   players: PlayerGameInfo[];
   current_player: string; // uuid
   small_blind: string; // uuid
   revealed_cards: Card[];
+  round_running: boolean; // Indicates if the round is currently running
+  game_ended: boolean; // Indicates if the game has ended
 };
+
+export type GameInfo = {
+  type: MessageType.GameInfo;
+} & GameState;
 
 export type PlayerGameInfo = {
   id: string; // uuid
@@ -69,7 +75,7 @@ export type PlayerGameInfo = {
 
 export type GameStarted = {
   type: MessageType.GameStarted;
-};
+} & GameState;
 
 export type PlayerJoined = {
   type: MessageType.PlayerJoined;
@@ -122,8 +128,8 @@ export type RoundEnded = {
 
 export type PlayerEndedInfo = {
   id: string; // uuid
-  cards?: [Card, Card]; // Only present if the player did not fold and more than 2 players are left because only then the cards are revealed
-  bestHand?: Hand; // Same as cards
+  cards?: [Card, Card]; // Only present if the player did not fold and more than 1 player is left because only then the cards are revealed
+  best_hand?: Hand; // Same as cards
   winnings: number;
 };
 

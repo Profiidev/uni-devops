@@ -108,7 +108,7 @@ impl GlobalGameState {
           }
           Some(msg) = sub.next() => {
             let Ok(msg) = serde_json::from_slice::<NatsMessage>(&msg.payload) else {
-              log::warn!("Failed to parse message: {:?}", msg);
+              log::warn!("Failed to parse message: {msg:?}");
               return;
             };
             let players = players_.lock().await;
@@ -183,7 +183,8 @@ impl GlobalGameState {
           room.send_msg_to_all(msg).await;
         }
       }
-      let mut players = room.players.lock().await;
+      let mut players: rocket::tokio::sync::MutexGuard<'_, HashMap<Uuid, Player>> =
+        room.players.lock().await;
       let player_name = players.remove(&player).map(|p| p.name);
       if players.is_empty() {
         drop(players);
@@ -196,6 +197,7 @@ impl GlobalGameState {
         room.nats_notify.notify_one();
         room.nats_task.abort();
       } else {
+        drop(players);
         room
           .send_msg_to_all(GameMessage::PlayerLeft(PlayerInfo {
             id: player,
@@ -204,6 +206,15 @@ impl GlobalGameState {
           .await;
       }
     }
+  }
+
+  pub async fn room_running(&self, id: Uuid) -> bool {
+    let rooms = self.rooms.lock().await;
+    if let Some(room) = rooms.get(&id) {
+      let room = room.lock().await;
+      return room.game_state.is_some();
+    }
+    false
   }
 }
 
@@ -252,7 +263,7 @@ impl Room {
       GameCommand::BackToLobby => {
         if let Some(game_state) = &self.game_state {
           let room = db.room().get(self.id).await?;
-          if room.owner != player || !game_state.game_ended {
+          if room.owner != player {
             self
               .send_msg_to_current_player(
                 player,
@@ -263,6 +274,18 @@ impl Room {
               .await;
             return Ok(());
           }
+          if !game_state.game_ended {
+            self
+              .send_msg_to_current_player(
+                player,
+                GameMessage::InvalidCommand(InvalidCommand {
+                  message: "Game is still ongoing".to_string(),
+                }),
+              )
+              .await;
+            return Ok(());
+          }
+
           // Reset game state
           self.game_state = None;
 
@@ -353,11 +376,32 @@ impl Room {
         self.game_state = Some(state);
       }
       GameCommand::NextRound => {
+        let room = db.room().get(self.id).await?;
+        if room.owner != player {
+          self
+            .send_msg_to_current_player(
+              player,
+              GameMessage::InvalidCommand(InvalidCommand {
+                message: "Only the room owner can start a new round".to_string(),
+              }),
+            )
+            .await;
+          return Ok(());
+        }
         if let Some(game_state) = &mut self.game_state {
           let players = self.players.lock().await;
           let active_players: Vec<Uuid> = players.keys().copied().collect();
-          for msg in game_state.next_round(active_players) {
-            self.send_msg_to_all(msg).await;
+          drop(players);
+          let (all, player_cards) = game_state.next_round(active_players);
+          for msg in all {
+            if let GameMessage::InvalidCommand(_) = &msg {
+              self.send_msg_to_current_player(player, msg).await;
+            } else {
+              self.send_msg_to_all(msg).await;
+            }
+          }
+          for (player_id, msg) in player_cards {
+            self.send_msg_to_player(player_id, msg).await;
           }
         } else {
           self
@@ -438,7 +482,7 @@ impl Room {
           name: player.name.clone(),
         })
         .collect(),
-      game_running: room.game_running,
+      game_running: self.game_state.is_some(),
       starting_cash: room.starting_cash,
       small_blind: room.small_blind,
       owner: room.owner,

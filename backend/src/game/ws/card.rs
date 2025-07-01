@@ -154,7 +154,6 @@ impl Hand {
       Ordering::Equal => a.0.cmp(&b.0),
       other => other,
     });
-    rank_sorted_by_count.reverse();
 
     // Check for flush
     let mut suits = HashMap::new();

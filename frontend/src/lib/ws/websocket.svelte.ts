@@ -1,4 +1,5 @@
-import { PUBLIC_BACKEND_URL } from '$env/static/public';
+import { goto } from '$app/navigation';
+import type { Command } from './command.svelte';
 
 let socket: WebSocket | null = null;
 
@@ -12,7 +13,7 @@ export function connectWebSocket(
   }
 
   console.log(`Connecting to WebSocket for game ID: ${id}`);
-  socket = new WebSocket(`${PUBLIC_BACKEND_URL}/game/ws/${id}`);
+  socket = new WebSocket(`/backend/game/ws/${id}`);
 
   socket.onopen = () => {
     console.log('WebSocket connection opened');
@@ -34,10 +35,11 @@ export function connectWebSocket(
 
   socket.onerror = (error) => {
     console.error('WebSocket error:', error);
+    goto('/');
   };
 }
 
-export function sendWebSocketMessage(data: any): void {
+export function sendWebSocketMessage(data: Command): void {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify(data));
   } else {

@@ -21,10 +21,11 @@ pub struct GameState {
   pub deck: Vec<Card>,
   pub small_blind_amount: i32,
   pub players_checked: usize,
-  pub game_running: bool,
+  pub round_running: bool,
   pub game_ended: bool,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct PlayerState {
   pub id: Uuid,
   pub bet: i32,
@@ -71,7 +72,7 @@ impl GameState {
       deck,
       small_blind_amount,
       players_checked: 0,
-      game_running: true,
+      round_running: true,
       game_ended: false,
     }
   }
@@ -82,6 +83,8 @@ impl GameState {
       small_blind: self.small_blind,
       revealed_cards: self.revealed_cards.clone(),
       pot: self.pot,
+      round_running: self.round_running,
+      game_ended: self.game_ended,
       players: self
         .players
         .iter()
@@ -95,19 +98,60 @@ impl GameState {
     }
   }
 
-  pub fn next_round(&mut self, active_players: Vec<Uuid>) -> Vec<GameMessage> {
-    if self.game_running {
-      return vec![GameMessage::InvalidCommand(InvalidCommand {
-        message: "Game is still running".to_string(),
-      })];
+  pub fn next_round(
+    &mut self,
+    active_players: Vec<Uuid>,
+  ) -> (Vec<GameMessage>, HashMap<Uuid, GameMessage>) {
+    if self.round_running {
+      return (
+        vec![GameMessage::InvalidCommand(InvalidCommand {
+          message: "Game is still running".to_string(),
+        })],
+        HashMap::new(),
+      );
     }
-    self.game_running = true;
+
+    if active_players.len() < 2
+      || self
+        .players
+        .iter()
+        .filter(|p| p.cash >= self.small_blind_amount * 2)
+        .count()
+        < 2
+    {
+      return (
+        vec![GameMessage::InvalidCommand(InvalidCommand {
+          message: "Not enough players to start a new round".to_string(),
+        })],
+        HashMap::new(),
+      );
+    }
+
+    let mut players_after_small_blind = self
+      .players
+      .iter()
+      .filter(|p| {
+        (active_players.contains(&p.id) && p.cash >= self.small_blind_amount * 2)
+          || p.id == self.small_blind
+      })
+      .cycle()
+      .skip_while(|&p| p.id != self.small_blind)
+      .skip(1)
+      .filter(|p| p.cash >= self.small_blind_amount * 2 && active_players.contains(&p.id))
+      .map(|p| p.id);
+
+    let small_blind = players_after_small_blind.next().unwrap();
+    let big_blind = players_after_small_blind.next().unwrap();
+    self.previous_player = big_blind;
+    self.current_player = players_after_small_blind.next().unwrap();
+    self.small_blind = small_blind;
 
     // Remove players with no cash left to continue
     self
       .players
-      .retain(|player| player.cash > self.small_blind_amount * 2);
+      .retain(|player| player.cash >= self.small_blind_amount * 2);
 
+    self.round_running = true;
     let mut msgs = Vec::new();
 
     // Reset players' bets for the next round
@@ -132,21 +176,8 @@ impl GameState {
     // Shuffle the deck for the next round
     self.deck = Card::deck();
 
-    let mut players_after_small_blind = self
-      .players
-      .iter()
-      .cycle()
-      .skip_while(|&p| p.id != self.small_blind)
-      .skip(1)
-      .map(|p| p.id);
-
-    let small_blind = players_after_small_blind.next().unwrap();
-    let big_blind = players_after_small_blind.next().unwrap();
-    self.previous_player = big_blind;
-    self.current_player = players_after_small_blind.next().unwrap();
-    self.small_blind = small_blind;
-
     // Deal new cards to players
+    let mut player_cards: HashMap<Uuid, GameMessage> = HashMap::new();
     for player in self.players.iter_mut() {
       // Add blinds to the pot and deduct from players' cash
       if player.id == small_blind {
@@ -160,9 +191,12 @@ impl GameState {
       }
 
       player.cards = [self.deck.pop().unwrap(), self.deck.pop().unwrap()];
-      msgs.push(GameMessage::YourCards(YourCards {
-        cards: player.cards,
-      }));
+      player_cards.insert(
+        player.id,
+        GameMessage::YourCards(YourCards {
+          cards: player.cards,
+        }),
+      );
     }
 
     msgs.insert(0, GameMessage::GameStarted(self.game_info()));
@@ -171,11 +205,11 @@ impl GameState {
       id: self.current_player,
     }));
 
-    msgs
+    (msgs, player_cards)
   }
 
   pub fn player_leaves(&mut self, player: Uuid) -> Vec<GameMessage> {
-    if !self.players.iter().any(|p| p.id == player) {
+    if !self.players.iter().any(|p| p.id == player) || !self.round_running {
       return vec![];
     }
 
@@ -199,15 +233,7 @@ impl GameState {
 
     if self.current_player == player {
       // If the current player leaves, find the next player
-      self.current_player = self
-        .players
-        .iter()
-        .cycle()
-        .skip_while(|&p| p.id != self.current_player)
-        .skip(1)
-        .find(|p| !p.folded)
-        .map(|p| p.id)
-        .unwrap();
+      self.next_player();
 
       msgs.push(GameMessage::PlayerTurn(PlayerTurn {
         id: self.current_player,
@@ -218,7 +244,7 @@ impl GameState {
   }
 
   pub fn handle_cmd(&mut self, cmd: GameCommand, player: Uuid) -> Vec<GameMessage> {
-    if !self.game_running || self.game_ended {
+    if !self.round_running || self.game_ended {
       return vec![GameMessage::InvalidCommand(InvalidCommand {
         message: "Game is not running".to_string(),
       })];
@@ -245,25 +271,26 @@ impl GameState {
     let mut msgs = Vec::new();
     match cmd {
       GameCommand::Call => {
-        if previous > current.cash + current.bet {
-          return vec![GameMessage::InvalidCommand(InvalidCommand {
-            message: "You don't have enough cash to call".to_string(),
-          })];
-        }
         if previous == current.bet {
           return vec![GameMessage::InvalidCommand(InvalidCommand {
             message: "You must raise or check".to_string(),
           })];
         }
-        current.cash -= previous - current.bet;
-        current.bet = previous;
-        self.pot += previous - current.bet;
+        if current.cash <= 0 {
+          return vec![GameMessage::InvalidCommand(InvalidCommand {
+            message: "You have to check or fold, you have no cash left".to_string(),
+          })];
+        }
+        let call_diff = (previous - current.bet).min(current.cash);
+        current.cash -= call_diff;
+        current.bet += call_diff;
+        self.pot += call_diff;
         self.players_checked += 1;
         msgs.extend(self.check_next_round());
         self.previous_player = self.current_player;
       }
       GameCommand::Check => {
-        if previous > current.bet {
+        if previous > current.bet && current.cash > 0 {
           return vec![GameMessage::InvalidCommand(InvalidCommand {
             message: "You must call or raise".to_string(),
           })];
@@ -294,7 +321,7 @@ impl GameState {
         current.bet += amount + call_diff;
         self.pot += amount + call_diff;
         self.previous_player = self.current_player;
-        self.players_checked = 0;
+        self.players_checked = 1;
       }
       _ => unreachable!("All other commands should be handled in the room"),
     }
@@ -304,6 +331,18 @@ impl GameState {
       id: self.current_player,
     }));
 
+    self.next_player();
+
+    if !self.game_ended && self.round_running {
+      msgs.push(GameMessage::PlayerTurn(PlayerTurn {
+        id: self.current_player,
+      }));
+    }
+
+    msgs
+  }
+
+  fn next_player(&mut self) {
     self.current_player = self
       .players
       .iter()
@@ -313,14 +352,6 @@ impl GameState {
       .find(|&p| !p.folded)
       .map(|p| p.id)
       .unwrap();
-
-    if !self.game_ended && self.game_running {
-      msgs.push(GameMessage::PlayerTurn(PlayerTurn {
-        id: self.current_player,
-      }));
-    }
-
-    msgs
   }
 
   fn check_next_round(&mut self) -> Vec<GameMessage> {
@@ -355,9 +386,9 @@ impl GameState {
   }
 
   fn end_game(&mut self) -> Vec<GameMessage> {
-    self.game_running = false;
+    self.round_running = false;
 
-    let remaining_players: Vec<_> = self.players.iter().filter(|p| !p.folded).collect();
+    let mut remaining_players: Vec<_> = self.players.iter_mut().filter(|p| !p.folded).collect();
     let mut msgs = if remaining_players.len() != 1 {
       let community: [Card; 5] = self
         .revealed_cards
@@ -382,11 +413,63 @@ impl GameState {
         }
       }
 
-      let pot = self.pot / winners.len() as i32;
+      let mut pot = self.pot;
+      let mut winnings = HashMap::new();
 
+      //first give every winner their bet back
       for player in self.players.iter_mut() {
         if winners.contains(&player.id) {
-          player.cash += pot;
+          player.cash += player.bet;
+          pot -= player.bet;
+          winnings.insert(player.id, player.bet);
+        }
+      }
+
+      let mut winners_by_bet = self
+        .players
+        .iter()
+        .filter(|p| winners.contains(&p.id))
+        .copied()
+        .collect::<Vec<_>>();
+      winners_by_bet.sort_by_key(|p| p.bet);
+      winners_by_bet.reverse();
+
+      let winners_count = winners.len() as i32;
+      let looser_count = self.players.len() as i32 - winners_count;
+
+      if looser_count != 0 {
+        while let Some(id) = winners_by_bet.pop().map(|p| p.id) {
+          let player = self.players.iter_mut().find(|p| p.id == id).unwrap();
+
+          let pot_per_player = pot / winners.len() as i32;
+          let pot_per_player_from_each_looser = pot_per_player / looser_count;
+
+          // If the player is all in, they can only win as much as they bet
+          if player.cash == 0 && player.bet < pot_per_player_from_each_looser {
+            player.cash += player.bet * looser_count;
+            pot -= player.bet * looser_count;
+            winnings
+              .entry(id)
+              .and_modify(|w| *w += player.bet * looser_count);
+          } else {
+            player.cash += pot_per_player;
+            pot -= pot_per_player;
+            winnings.entry(id).and_modify(|w| *w += pot_per_player);
+          }
+        }
+
+        while pot > 0 {
+          for player in self.players.iter_mut() {
+            if !winners.contains(&player.id) {
+              continue;
+            }
+            player.cash += 1;
+            pot -= 1;
+            winnings.entry(player.id).and_modify(|w| *w += 1);
+            if pot <= 0 {
+              break;
+            }
+          }
         }
       }
 
@@ -399,12 +482,14 @@ impl GameState {
               id,
               cards: Some(player.cards),
               best_hand: Some(hand.clone()),
-              winnings: if winners.contains(&id) { pot } else { 0 },
+              winnings: winnings.get(&id).copied().unwrap_or(0),
             }
           })
           .collect(),
       })]
     } else {
+      remaining_players[0].cash += self.pot;
+
       vec![GameMessage::RoundEnded(RoundEnded {
         players: remaining_players
           .iter()
@@ -418,7 +503,11 @@ impl GameState {
       })]
     };
 
-    let non_broke_players: Vec<&PlayerState> = self.players.iter().filter(|p| p.cash > 0).collect();
+    let non_broke_players: Vec<&PlayerState> = self
+      .players
+      .iter()
+      .filter(|p| p.cash >= self.small_blind_amount * 2)
+      .collect();
     if non_broke_players.len() == 1 {
       // If only one player has cash left, they win the game
       let winner = non_broke_players[0];
