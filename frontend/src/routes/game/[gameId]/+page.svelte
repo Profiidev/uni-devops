@@ -198,19 +198,26 @@
 {#if !roomInfo}
   <p>Loading room information...</p>
 {:else if !roomInfo.game_running}
-  <h2>Player:</h2>
-  {#each roomInfo.players as player}
-    {#if player.online}
-      <p>{player.name}</p>
-    {/if}
-  {/each}
-  {#if roomInfo.owner === ownPlayerId}
-    <button
-      onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}
-    >
-      Start Game
-    </button>
-  {/if}
+  <main>
+    <h1>Dealing With DevOps</h1>
+    <div class="middle">
+      <h2>Player:</h2>
+
+      {#each roomInfo.players as player}
+        {#if player.online}
+          <p>{player.name}</p>
+        {/if}
+      {/each}
+      {#if roomInfo.owner === ownPlayerId}
+        <button
+          class="primaryButton"
+          onclick={() => sendWebSocketMessage({ type: CommandType.StartGame })}
+        >
+          Start Game
+        </button>
+      {/if}
+    </div>
+  </main>
 {:else if gameState}
   <div class="enemyPlayerContainer">
     {#if enemyPlayer().length > 0}
@@ -463,5 +470,46 @@
         cursor: pointer;
       }
     }
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 2rem;
+    gap: 2rem;
+  }
+
+  .middle {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 15px;
+    padding: 3.5rem;
+    gap: 1rem;
+    background-color: var(--surface-background);
+    width: min(90vw, 700px);
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  p {
+    font-size: 1rem;
+  }
+
+  .primaryButton {
+    padding: 0.5rem 1rem;
+    width: fit-content;
+    background-color: var(--primary-color);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
   }
 </style>

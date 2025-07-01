@@ -88,7 +88,7 @@
 <main>
   <h1>Dealing With DevOps</h1>
   <div class="middle">
-    <button class="primary-button" onclick={createRoomClicked}>New Game</button>
+    <button class="primaryButton" onclick={createRoomClicked}>New Game</button>
     <h2>Your Games:</h2>
 
     <div class="rooms">
@@ -100,10 +100,10 @@
           <p>Small Blind: {room.small_blind}</p>
           <div class="row">
             <button
-              class="primary-button"
+              class="primaryButton"
               onclick={() => goto(`/game/${room.id}`)}>join</button
             >
-            <button onclick={() => deleteRoomClicked(room.id)}>delete</button>
+            <button class="deleteButton" onclick={() => deleteRoomClicked(room.id)}>delete</button>
           </div>
         </div>
       {/each}
@@ -119,6 +119,7 @@
     margin: 2rem;
     gap: 2rem;
   }
+
   .middle {
     display: flex;
     flex-direction: column;
@@ -130,16 +131,20 @@
     background-color: var(--surface-background);
     width: min(90vw, 700px);
   }
+
   h1 {
     font-size: 2rem;
   }
+
   h2 {
     font-size: 1.5rem;
   }
+
   p {
     font-size: 1rem;
   }
-  .primary-button {
+
+  .primaryButton {
     padding: 0.5rem 1rem;
     width: fit-content;
     background-color: var(--primary-color);
@@ -147,6 +152,7 @@
     border-radius: 4px;
     cursor: pointer;
   }
+
   .rooms {
     display: flex;
     flex-direction: row;
@@ -156,11 +162,13 @@
     width: 100%;
     flex-wrap: wrap;
   }
+
   .room {
     border: 2px solid var(--primary-color);
     border-radius: 8px;
     padding: 1rem;
   }
+  
   .row {
     display: flex;
     flex-direction: row;
