@@ -171,7 +171,7 @@ resource "kubernetes_ingress_v1" "backend" {
     name      = "backend"
     namespace = kubernetes_namespace.app.metadata[0].name
     annotations = {
-      "cert-manager.io/cluster-issuer" = var.cert_issuer_staging
+      "cert-manager.io/cluster-issuer" = var.cert_issuer_prod
       "nginx.ingress.kubernetes.io/rewrite-target" = "/$1"
     }
   }
@@ -206,7 +206,7 @@ resource "kubernetes_ingress_v1" "frontend" {
     name      = "frontend"
     namespace = kubernetes_namespace.app.metadata[0].name
     annotations = {
-      "cert-manager.io/cluster-issuer" = var.cert_issuer_staging
+      "cert-manager.io/cluster-issuer" = var.cert_issuer_prod
     }
   }
   spec {
