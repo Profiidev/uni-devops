@@ -464,6 +464,10 @@
         gap: 10px;
         opacity: 0.6;
 
+        .raiseInput {
+          text-align: center;
+        }
+
         button {
           cursor: default;
         }
@@ -551,7 +555,8 @@
 
     p {
       max-width: 220px;
-      overflow-y: scroll;
+      overflow-x: auto;
+      overflow-y: hidden;
       white-space: nowrap;
     }
   }

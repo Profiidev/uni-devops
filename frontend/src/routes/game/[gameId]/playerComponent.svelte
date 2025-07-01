@@ -203,6 +203,6 @@
 
   .sideDisplay {
     position: absolute;
-    transform: translateX(140px);
+    transform: translateX(clamp(85px, 14vw, 140px)) translateY(-15px);
   }
 </style>
