@@ -303,6 +303,8 @@ impl GameState {
         current.folded = true;
         if self.players.iter().filter(|p| !p.folded).count() == 1 {
           msgs.extend(self.end_game());
+        } else {
+          msgs.extend(self.check_next_round());
         }
       }
       GameCommand::Raise(Raise { amount }) => {
@@ -355,7 +357,7 @@ impl GameState {
   }
 
   fn check_next_round(&mut self) -> Vec<GameMessage> {
-    if self.players_checked == self.players.iter().filter(|p| !p.folded).count() {
+    if self.players_checked >= self.players.iter().filter(|p| !p.folded).count() {
       if self.revealed_cards.len() < 5 {
         let mut msgs = Vec::new();
         if self.revealed_cards.is_empty() {

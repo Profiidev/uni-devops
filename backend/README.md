@@ -1,8 +1,10 @@
 # Backend
 
-## Docs
+This is the backend written in Rust with Rocket.
 
-The docs can be viewed locally at `http://localhost:1420/backend/docs/index.html`
+## Api Docs
+
+The docs can be viewed when running locally [here](http://localhost:1420/backend/docs/index.html)
 
 ## Development requirements
 
@@ -26,3 +28,8 @@ The docs can be viewed locally at `http://localhost:1420/backend/docs/index.html
    sea-orm-cli generate entity -o entity/src/entities
    ```
 4. Create a `<name>.rs` file in the `src/db/tables` dir with your db logic and add your table to the tables struct in `src/db/tables/mod.rs`
+
+## Deployment
+
+The Dockerfile for the backend can be found [here](Dockerfile).
+This will be built automatically by the GitHub Actions workflow on every pr, push to main or release.
